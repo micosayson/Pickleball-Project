@@ -1,0 +1,7 @@
+{
+  "include": ["app"],
+  "extraPaths": ["."],
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "basic"
+}

@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:pickleball_frontend/features/auth/pages/onboarding_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/config/supabase_config.dart';
+import 'features/auth/widgets/auth_gate.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: SupabaseConfig.supabaseUrl,
+    anonKey: SupabaseConfig.supabaseAnonKey,
+  );
+
   runApp(const MyApp());
 }
 
@@ -24,7 +33,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF9FBF9),
         fontFamily: 'Inter',
       ),
-      home: const OnboardingPage(),
+      home: const AuthGate(),
     );
   }
 }

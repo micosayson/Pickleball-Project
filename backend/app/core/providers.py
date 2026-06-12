@@ -32,8 +32,6 @@ from app.modules.rankings.repository import RankingRepository
 from app.modules.rankings.service import RankingService
 from app.modules.score_submissions.repository import ScoreSubmissionRepository
 from app.modules.score_submissions.service import ScoreSubmissionService
-from app.modules.tenants.repository import TenantRepository
-from app.modules.tenants.service import TenantService
 from app.modules.users.repository import UserRepository
 from app.modules.users.service import UserService
 
@@ -48,11 +46,3 @@ def provide_user_repository(db: Session = Depends(provide_session)) -> UserRepos
 
 def provide_user_service(repository: UserRepository = Depends(provide_user_repository)) -> UserService:
     return UserService(repository)
-
-
-def provide_tenant_repository(db: Session = Depends(provide_session)) -> TenantRepository:
-    return TenantRepository(db)
-
-
-def provide_tenant_service(repository: TenantRepository = Depends(provide_tenant_repository)) -> TenantService:
-    return TenantService(repository)

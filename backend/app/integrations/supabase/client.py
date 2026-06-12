@@ -1,5 +1,7 @@
+from supabase import create_client
 from app.core.config import settings
 
-
-def get_supabase_client():
-    raise NotImplementedError("Supabase client wiring is pending.")
+supabase = create_client(
+    settings.SUPABASE_URL,
+    settings.SUPABASE_ANON_KEY,
+)

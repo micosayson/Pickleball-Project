@@ -10,12 +10,10 @@ from app.modules.rating_history.models import RatingHistory
 from app.modules.player_ratings.models import PlayerRating
 from app.modules.rankings.models import Ranking
 from app.modules.score_submissions.models import ScoreSubmission
-from app.modules.tenants.models import Tenant
 from app.modules.users.models import User
 
 __all__ = [
     "User",
-    "Tenant",
     "Court",
     "CourtMembership",
     "CourtStaff",

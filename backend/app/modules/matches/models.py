@@ -44,7 +44,7 @@ class Match(UUIDPrimaryKeyMixin, AuditMixin, Base):
     winner_team_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    tenant: Mapped["Tenant"] = relationship("Tenant")
+    court: Mapped["Court"] = relationship("Court")
     court: Mapped["Court"] = relationship("Court")
     event: Mapped["Event"] = relationship("Event", back_populates="matches")
     participants: Mapped[list["MatchParticipant"]] = relationship("MatchParticipant", back_populates="match")

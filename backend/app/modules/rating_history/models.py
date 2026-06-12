@@ -15,12 +15,6 @@ class RatingHistory(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "rating_history"
     __table_args__ = (UniqueConstraint("match_id", "rating_id", "user_id", name="uq_rating_history_match_rating_user"),)
 
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
     court_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),
@@ -58,7 +52,6 @@ class RatingHistory(UUIDPrimaryKeyMixin, AuditMixin, Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     calculated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    tenant: Mapped["Tenant"] = relationship("Tenant")
     court: Mapped["Court | None"] = relationship("Court")
     event: Mapped["Event | None"] = relationship("Event")
     match: Mapped["Match"] = relationship("Match")

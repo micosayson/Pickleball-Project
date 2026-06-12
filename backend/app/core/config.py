@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,13 +9,25 @@ class Settings(BaseSettings):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
 
-    supabase_url: str = ""
-    supabase_service_role_key: str = ""
-    supabase_anon_key: str = ""
-    database_url: str = ""
-    storage_bucket_name: str = "pickleball-assets"
+    SUPABASE_URL: str
+    SUPABASE_ANON_KEY: str
+    SUPABASE_SERVICE_ROLE_KEY: str | None = None
+    DATABASE_URL: str = ""
+    STORAGE_BUCKET_NAME: str = "pickleball-assets"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @field_validator("debug", mode="before")
+    def parse_debug(cls, value):
+        if isinstance(value, str):
+            truthy = {"1", "true", "yes", "y", "on"}
+            falsy = {"0", "false", "no", "n", "off", "release"}
+            normalized = value.strip().lower()
+            if normalized in truthy:
+                return True
+            if normalized in falsy:
+                return False
+        return value
 
 
 @lru_cache

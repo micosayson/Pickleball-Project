@@ -15,12 +15,6 @@ class EventRegistration(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "event_registrations"
     __table_args__ = (UniqueConstraint("event_id", "user_id", name="uq_event_registrations_event_user"),)
 
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
     court_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),
@@ -48,7 +42,6 @@ class EventRegistration(UUIDPrimaryKeyMixin, AuditMixin, Base):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     payment_status: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    tenant: Mapped["Tenant"] = relationship("Tenant")
     court: Mapped["Court"] = relationship("Court")
     event: Mapped["Event"] = relationship("Event", back_populates="registrations")
     user: Mapped["User"] = relationship("User", back_populates="event_registrations", foreign_keys=[user_id])

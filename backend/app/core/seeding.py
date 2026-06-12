@@ -19,7 +19,6 @@ from app.modules.player_ratings.models import PlayerRating
 from app.modules.rating_history.models import RatingHistory
 from app.modules.rankings.models import Ranking
 from app.modules.score_submissions.models import ScoreSubmission
-from app.modules.tenants.models import Tenant
 from app.modules.users.models import User
 
 DEMO_NAMESPACE = uuid.UUID("6cce2218-5e04-4cda-9b6c-a2d30b0f4f1a")

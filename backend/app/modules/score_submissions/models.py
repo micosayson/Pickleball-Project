@@ -14,12 +14,6 @@ from app.db.mixins import AuditMixin, UUIDPrimaryKeyMixin
 class ScoreSubmission(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "score_submissions"
 
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
     court_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),
@@ -58,7 +52,6 @@ class ScoreSubmission(UUIDPrimaryKeyMixin, AuditMixin, Base):
     dispute_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    tenant: Mapped["Tenant"] = relationship("Tenant")
     court: Mapped["Court"] = relationship("Court")
     event: Mapped["Event"] = relationship("Event")
     match: Mapped["Match"] = relationship("Match", back_populates="score_submissions")

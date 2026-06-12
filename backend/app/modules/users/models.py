@@ -20,10 +20,10 @@ class User(UUIDPrimaryKeyMixin, AuditMixin, Base):
     platform_role: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
 
-    owned_tenants: Mapped[list["Tenant"]] = relationship(
-        "Tenant",
+    owned_courts: Mapped[list["Court"]] = relationship(
+        "Court",
         back_populates="owner_user",
-        foreign_keys="Tenant.owner_user_id",
+        foreign_keys="Court.owner_user_id",
     )
     invitations_sent: Mapped[list["Invitation"]] = relationship(
         "Invitation",

@@ -42,7 +42,7 @@ class Event(UUIDPrimaryKeyMixin, AuditMixin, Base):
     check_in_opens_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     check_in_closes_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="events")
+    court: Mapped["Court"] = relationship("Court", back_populates="events")
     court: Mapped["Court"] = relationship("Court", back_populates="events")
     registrations: Mapped[list["EventRegistration"]] = relationship("EventRegistration", back_populates="event")
     matches: Mapped[list["Match"]] = relationship("Match", back_populates="event")

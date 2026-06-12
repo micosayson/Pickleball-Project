@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../pages/login_page.dart';
 import '../pages/register_page.dart';
+import '../services/auth_service.dart';
+import '../../home/pages/home_placeholder_page.dart';
 
 class AuthHeader extends StatelessWidget {
   final bool isDesktop;
@@ -86,6 +89,8 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  final _authService = AuthService();
 
   @override
   void dispose() {
@@ -214,13 +219,47 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
           SizedBox(
             height: 56.0,
             child: ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Logging in...')),
-                  );
-                }
-              },
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      if (_formKey.currentState!.validate()) {
+                        setState(() => _isLoading = true);
+                        try {
+                          await _authService.signIn(
+                            email: _emailController.text.trim(),
+                            password: _passwordController.text,
+                          );
+                          if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const HomePlaceholderPage(),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        } on AuthException catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.message),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('An unexpected error occurred.'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isLoading = false);
+                        }
+                      }
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F6F52),
                 foregroundColor: Colors.white,
@@ -230,14 +269,23 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                 elevation: 2.0,
                 shadowColor: const Color(0xFF4F6F52).withOpacity(0.4),
               ),
-              child: const Text(
-                'Login',
-                style: TextStyle(
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 22.0,
+                      height: 22.0,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Login',
+                      style: TextStyle(
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -261,6 +309,8 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+  final _authService = AuthService();
 
   @override
   void dispose() {
@@ -455,13 +505,68 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           SizedBox(
             height: 56.0,
             child: ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Creating account...')),
-                  );
-                }
-              },
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      if (_formKey.currentState!.validate()) {
+                        setState(() => _isLoading = true);
+                        try {
+                          final response = await _authService.signUp(
+                            email: _emailController.text.trim(),
+                            password: _passwordController.text,
+                            fullName: _nameController.text.trim(),
+                          );
+                          if (context.mounted) {
+                            if (response.session != null) {
+                              // Email confirmation is OFF — user is logged in
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (_) => const HomePlaceholderPage(),
+                                ),
+                                (route) => false,
+                              );
+                            } else {
+                              // Email confirmation is ON — tell user to check email
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Account created! Please check your email to confirm, then log in.',
+                                  ),
+                                  duration: Duration(seconds: 5),
+                                  backgroundColor: Color(0xFF4F6F52),
+                                ),
+                              );
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginPage(),
+                                ),
+                                (route) => false,
+                              );
+                            }
+                          }
+                        } on AuthException catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.message),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('An unexpected error occurred.'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isLoading = false);
+                        }
+                      }
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F6F52),
                 foregroundColor: Colors.white,
@@ -471,14 +576,23 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                 elevation: 2.0,
                 shadowColor: const Color(0xFF4F6F52).withOpacity(0.4),
               ),
-              child: const Text(
-                'Register',
-                style: TextStyle(
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 22.0,
+                      height: 22.0,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Register',
+                      style: TextStyle(
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
             ),
           ),
         ],

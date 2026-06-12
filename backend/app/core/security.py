@@ -64,6 +64,24 @@ def get_current_user_profile(token: str = Depends(get_current_token)) -> AuthMeR
     )
 
 
+def get_current_auth_identity(token: str = Depends(get_current_token)) -> AuthMeRead:
+    claims = verify_supabase_jwt(token)
+    user_id = claims.get("sub")
+    email = claims.get("email")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token does not contain user id",
+        )
+
+    return AuthMeRead(
+        user_id=str(user_id),
+        email=str(email) if email is not None else None,
+        platform_role=None,
+    )
+
+
 def require_role(required_roles: list[Role]):
     def dependency(user: AuthMeRead = Depends(get_current_user_profile)) -> AuthMeRead:
         if user.platform_role not in [role.value for role in required_roles]:

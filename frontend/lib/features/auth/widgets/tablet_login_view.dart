@@ -16,7 +16,7 @@ class TabletLoginView extends StatelessWidget {
           height: double.infinity,
         ),
         // Dark/Green tint Overlays
-        Container(color: Colors.black.withOpacity(0.55)),
+        Container(color: Colors.black.withValues(alpha: 0.55)),
         Container(color: const Color(0x734F6F52)),
         // Centered Card
         Center(
@@ -25,7 +25,7 @@ class TabletLoginView extends StatelessWidget {
             child: Card(
               color: Colors.white,
               elevation: 12.0,
-              shadowColor: Colors.black.withOpacity(0.2),
+              shadowColor: Colors.black.withValues(alpha: 0.2),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(32.0),
               ),

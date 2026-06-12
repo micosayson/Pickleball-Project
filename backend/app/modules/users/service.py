@@ -1,7 +1,8 @@
 from fastapi import HTTPException, status
+
 from app.modules.auth.schemas import AuthMeRead
 from app.modules.users.repository import UserRepository
-from app.modules.users.schemas import UserRead, UserUpdate
+from app.modules.users.schemas import UserRead, UserSyncRequest, UserUpdate
 
 
 class UserService:
@@ -38,3 +39,19 @@ class UserService:
         )
 
         return UserRead.from_orm(updated_user)
+
+    def sync_current_user_profile(
+        self,
+        user: AuthMeRead,
+        payload: UserSyncRequest,
+        repository: UserRepository,
+    ) -> UserRead:
+        synced_user = repository.create_or_update_profile(
+            supabase_user_id=user.user_id,
+            email=user.email or "",
+            full_name=getattr(payload, "full_name", None),
+            avatar_url=getattr(payload, "avatar_url", None),
+            platform_role=getattr(payload, "platform_role", None),
+        )
+
+        return UserRead.from_orm(synced_user)

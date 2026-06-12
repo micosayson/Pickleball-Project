@@ -28,7 +28,7 @@ class OnboardingPage extends StatelessWidget {
           ),
           // Dark Overlay (55%)
           Container(
-            color: Colors.black.withOpacity(0.55),
+            color: Colors.black.withValues(alpha: 0.55),
           ),
           // Green Tint Overlay (#4F6F52 at 40% opacity)
           Container(
@@ -54,7 +54,7 @@ class OnboardingPage extends StatelessWidget {
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                        backgroundColor: Colors.white.withOpacity(0.15),
+                        backgroundColor: Colors.white.withValues(alpha: 0.15),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16.0),
                         ),
@@ -77,10 +77,10 @@ class OnboardingPage extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFA8C686).withOpacity(0.25),
+                          color: const Color(0xFFA8C686).withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(30.0),
                           border: Border.all(
-                            color: const Color(0xFFA8C686).withOpacity(0.5),
+                            color: const Color(0xFFA8C686).withValues(alpha: 0.5),
                             width: 1.5,
                           ),
                         ),
@@ -121,7 +121,7 @@ class OnboardingPage extends StatelessWidget {
                       Text(
                         'Connect with athletes nearby, join events,\nbook courts, and track your ratings.',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: subtextFontSize,
                           fontWeight: FontWeight.w400,
                           height: 1.4,
@@ -150,7 +150,7 @@ class OnboardingPage extends StatelessWidget {
                             width: 8.0,
                             height: 6.0,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.4),
+                              color: Colors.white.withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(3.0),
                             ),
                           ),
@@ -159,7 +159,7 @@ class OnboardingPage extends StatelessWidget {
                             width: 8.0,
                             height: 6.0,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.4),
+                              color: Colors.white.withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(3.0),
                             ),
                           ),
@@ -184,7 +184,7 @@ class OnboardingPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(16.0),
                             ),
                             elevation: 4.0,
-                            shadowColor: Colors.black.withOpacity(0.3),
+                            shadowColor: Colors.black.withValues(alpha: 0.3),
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,

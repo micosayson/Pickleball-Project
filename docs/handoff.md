@@ -2,31 +2,16 @@
 
 This document is intended for any developer picking up the pickleball platform workstream.
 
-## Session Update
+## Current Snapshot
 
-This first implementation session completed the backend foundation and seeded the database with demo records.
+The codebase is in a mostly aligned state:
 
-What was finished today:
+- the backend is a FastAPI app with SQLAlchemy models, Alembic migrations, and working request routes
+- the frontend is a Flutter app with Supabase Auth, an auth gate, and a signed-in home screen
+- Supabase is being used for auth, database hosting, and storage
+- backend profile sync is wired through `/api/v1/users/sync`
 
-- corrected the backend repository structure into a monorepo layout
-- generated the backend SQLAlchemy model layer
-- fixed Alembic template generation so autogenerate produces real migration DDL
-- ran migrations successfully into Supabase PostgreSQL
-- seeded demo data for users, tenant, courts, memberships, staff, event, match, score submission, ratings, rating history, and rankings
-- created a backend-local virtual environment for clean dependency resolution
-- fixed the `get_db()` generator typing issue for Pylance
-- added local VS Code settings so the backend interpreter resolves correctly
-
-Verified seeded demo entities:
-
-- Platform Admin: Mico
-- Court Owner tenant: Smash Zone
-- Test Court
-- Test Staff: Staff 1
-- Test Players: Player A, Player B, Player C, Player D
-- Test Event: Thursday Competitive Play
-
-## Project Goal
+## Product Goal
 
 Build a multi-tenant pickleball platform where players can:
 
@@ -53,18 +38,24 @@ Important product rule:
 ## Technical Direction
 
 ### Frontend
+
 - Flutter web and mobile
+- Supabase Auth handles sign-in and sign-up in the client
+- Flutter talks to FastAPI for business data
 
 ### Backend
+
 - FastAPI
 - SQLAlchemy
 - Alembic
 - Pydantic v2
 
 ### Database
+
 - Supabase PostgreSQL
 
 ### Supabase Usage
+
 - authentication
 - database hosting
 - storage
@@ -84,15 +75,18 @@ Important:
 ## Core Workflows
 
 ### Discovery
+
 - players find nearby courts and events
 - players filter by distance, time, event type, and competitive level
 
 ### Open Play
+
 - players join casual events
 - staff manages check-in and rotation
 - participation is the primary outcome
 
 ### Competitive Play
+
 - event runs for several hours
 - multiple matches happen within one event
 - scores are submitted per match
@@ -100,11 +94,13 @@ Important:
 - rankings update from ratings
 
 ### Seed Data Workflow
+
 - the backend includes a repeatable seed script for demo records
 - seed data is intended for local testing and early integration verification only
 - production seed values should be replaced before launch
 
 ### Tournament Play
+
 - tournament structure may vary
 - bracket or structured progression is expected
 - competitive integrity and auditability are important
@@ -112,6 +108,7 @@ Important:
 ## Implementation Guidance
 
 ### Backend Architecture
+
 Use a domain-oriented structure with clear separation between:
 
 - API routes
@@ -122,6 +119,7 @@ Use a domain-oriented structure with clear separation between:
 - tenant context
 
 ### Suggested Domain Areas
+
 - auth
 - tenants
 - users
@@ -136,9 +134,10 @@ Use a domain-oriented structure with clear separation between:
 - storage
 - notifications
 
-### Backend Repository Status
+### Repository Status
+
 - `backend/` is the active FastAPI repository
-- `frontend/` is reserved for the Flutter application
+- `frontend/` is the active Flutter client
 - `docs/` holds architecture and handoff documentation
 - `backend/.venv` should be used as the local Python environment
 
@@ -153,23 +152,27 @@ Use a domain-oriented structure with clear separation between:
 ## Permission Model
 
 ### Super Admin
+
 - manage all tenants
 - inspect all platform data
 - handle platform-level oversight
 
 ### Court Owner
+
 - create and manage courts
 - manage staff
 - create and manage events
 - view community statistics
 
 ### Staff
+
 - support operations
 - check in players
 - manage live event flow
 - submit or verify scores when authorized
 
 ### Player
+
 - discover courts and events
 - join events
 - participate in matches
@@ -190,7 +193,7 @@ Important:
 - match results must be auditable
 - rating updates must be traceable to completed matches
 - ranking updates must follow rating updates
-- seed data includes one completed competitive match to validate this flow end-to-end
+- seed data includes one completed competitive match to validate this flow end to end
 
 ## Handoff Checklist
 
@@ -209,15 +212,12 @@ Before a developer starts implementation, confirm:
 
 ## Suggested Order Of Work
 
-1. Finalize domain model and workflows
-2. Define permissions and tenant context
-3. Scaffold FastAPI project structure
-4. Implement auth and membership handling
-5. Implement events, matches, and scoring
-6. Implement ratings and rankings
-7. Add audit logging and notifications
-8. Connect Flutter frontend
-9. Expand seed data and test fixtures as the API grows
+1. Finalize tenant-aware request handling
+2. Finish the event, match, rating, and ranking services
+3. Expand the Flutter UI beyond auth and the current home screen
+4. Add the remaining CRUD endpoints and integration tests
+5. Add audit logging and notifications
+6. Expand seed data and test fixtures as the API grows
 
 ## Open Questions
 
@@ -246,15 +246,22 @@ Backend infrastructure status:
 - Supabase schema has been created
 - sample data has been seeded successfully
 - local Python environment is configured for backend development
+- backend profile sync is working through `/api/v1/users/sync`
+
+Frontend status:
+
+- Supabase Auth login and sign-up are active in Flutter
+- `AuthGate` decides whether to show auth or the signed-in view
+- the signed-in home screen is available
+- the API tester can call GET, POST, and PATCH endpoints on the backend
 
 Immediate next implementation targets:
 
-1. `POST /auth/login`
-2. `POST /courts`
-3. `POST /events`
-4. `POST /events/{id}/join`
-5. `POST /matches`
-6. `POST /scores`
+1. Add tenant-aware request handling
+2. Finish the remaining event and match CRUD endpoints
+3. Finish rating and ranking workflows
+4. Expand the production UI
+5. Add integration tests
 
 ## Notes For The Next Developer
 

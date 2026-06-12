@@ -25,7 +25,7 @@ class MobileLoginView extends StatelessWidget {
               ),
               Container(
                 height: topImageHeight,
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withValues(alpha: 0.4),
               ),
               Container(
                 height: topImageHeight,

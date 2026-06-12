@@ -50,57 +50,47 @@ The platform is player-first.
 
 ### Backend
 
-The backend now includes:
+The backend currently includes:
 
 - domain models for users, courts, events, matches, ratings, rankings, and related history tables
-- Alembic migrations for the initial schema
+- FastAPI routes for auth checks, user profile sync, and test endpoints
+- Alembic migrations for the schema
 - a demo seed script for test data
 - a local backend virtual environment at `backend/.venv`
 
 ### Frontend
 
-The Flutter app is still a future step. No screens have been generated yet.
+The Flutter app is active now, not a future step.
 
-## Today’s Progress
+It currently includes:
 
-Completed in this session:
+- Supabase Auth login and sign-up flow
+- an `AuthGate` that routes between auth and the signed-in view
+- a signed-in home screen
+- a small backend API tester for GET, POST, and PATCH calls
 
-1. Generated and corrected the backend SQLAlchemy model layer
-2. Fixed Alembic template generation so autogenerate emits real DDL
-3. Ran Alembic migrations successfully against Supabase PostgreSQL
-4. Created demo seed data for:
-   - Platform Admin: Mico
-   - Court Owner tenant: Smash Zone
-   - Test Court
-   - Test Staff: Staff 1
-   - Test Players: Player A, Player B, Player C, Player D
-   - Test Event: Thursday Competitive Play
-   - seed match, score submission, ratings, rating history, and rankings
-5. Created a backend virtual environment and installed project dependencies
-6. Fixed the generator typing issue in `get_db()` for Pylance
-7. Added local VS Code settings for backend interpreter resolution
+## Current Status
 
-## Backend Status
-
-The backend skeleton is now in place under `backend/`.
+The codebase is mostly aligned with the intended architecture.
 
 Working pieces:
 
 - SQLAlchemy models
 - Alembic migration flow
 - Supabase connection through the backend configuration
+- Supabase Auth in Flutter
+- FastAPI request handling and JWT validation
 - demo seed data
 - project-local Python virtual environment
 
-Still to build:
+Still in progress:
 
-- FastAPI route implementations
-- auth flows
 - tenant resolution middleware
 - permission guards
 - event engine business logic
 - rating and ranking workflows
-- Flutter UI
+- full production UI
+- more backend CRUD endpoints
 
 ## Environment Notes
 
@@ -128,11 +118,12 @@ If you want to verify the seed data in Supabase, check the `public.events` table
 ## Docs
 
 - [Handoff](docs/handoff.md)
+- [Roadmap](docs/roadmap.md)
 - [Permission Matrix](docs/permission_matrix.md)
 
 ## Next Steps
 
-1. Implement the FastAPI skeleton endpoints
-2. Add auth and tenant-scoped request handling
-3. Build event, match, rating, and ranking services
-4. Start Flutter frontend scaffolding
+1. Add tenant-aware request handling
+2. Build the remaining event, match, rating, and ranking services
+3. Expand the Flutter UI beyond the current auth and home flow
+4. Add more CRUD endpoints and integration tests

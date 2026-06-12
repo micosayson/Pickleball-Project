@@ -19,7 +19,7 @@ class DesktopRegisterView extends StatelessWidget {
                 width: double.infinity,
                 height: double.infinity,
               ),
-              Container(color: Colors.black.withOpacity(0.55)),
+              Container(color: Colors.black.withValues(alpha: 0.55)),
               Container(color: const Color(0x734F6F52)),
               Padding(
                 padding: const EdgeInsets.all(64.0),
@@ -69,7 +69,7 @@ class DesktopRegisterView extends StatelessWidget {
                     Text(
                       'Connect with athletes nearby, join events, book courts, and track your ratings. Experience the game at a whole new level.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 18.0,
                         fontWeight: FontWeight.w400,
                         height: 1.5,

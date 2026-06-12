@@ -5,6 +5,19 @@ import '../pages/register_page.dart';
 import '../services/auth_service.dart';
 import '../../home/pages/home_placeholder_page.dart';
 
+bool _looksLikeEmail(String value) {
+  final atIndex = value.indexOf('@');
+  if (atIndex <= 0 || atIndex == value.length - 1) {
+    return false;
+  }
+  final domain = value.substring(atIndex + 1);
+  final dotIndex = domain.lastIndexOf('.');
+  if (dotIndex <= 0 || dotIndex == domain.length - 1) {
+    return false;
+  }
+  return !value.contains(' ') && !domain.contains(' ');
+}
+
 class AuthHeader extends StatelessWidget {
   final bool isDesktop;
   final String title;
@@ -29,7 +42,7 @@ class AuthHeader extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4F6F52).withOpacity(0.1),
+                  color: const Color(0xFF4F6F52).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10.0),
                 ),
                 child: const Icon(
@@ -90,7 +103,11 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  DateTime? _retryAfter;
   final _authService = AuthService();
+
+  bool get _isRateLimited =>
+      _retryAfter != null && DateTime.now().isBefore(_retryAfter!);
 
   @override
   void dispose() {
@@ -101,6 +118,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
 
   @override
   Widget build(BuildContext context) {
+    final canSubmit = !_isLoading && !_isRateLimited;
     return Form(
       key: _formKey,
       child: Column(
@@ -136,7 +154,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              if (!_looksLikeEmail(value)) {
                 return 'Please enter a valid email address';
               }
               return null;
@@ -219,47 +237,50 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
           SizedBox(
             height: 56.0,
             child: ElevatedButton(
-              onPressed: _isLoading
-                  ? null
-                  : () async {
+              onPressed: canSubmit
+                  ? () async {
                       if (_formKey.currentState!.validate()) {
                         setState(() => _isLoading = true);
                         try {
-                          await _authService.signIn(
+                          final response = await _authService.signIn(
                             email: _emailController.text.trim(),
                             password: _passwordController.text,
                           );
-                          if (context.mounted) {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (_) => const HomePlaceholderPage(),
-                              ),
-                              (route) => false,
-                            );
-                          }
+                          if (!context.mounted) return;
+                          debugPrint('Login completed. session=${response.session != null}');
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (_) => const HomePlaceholderPage(),
+                            ),
+                            (route) => false,
+                          );
                         } on AuthException catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(e.message),
-                                backgroundColor: Colors.redAccent,
-                              ),
-                            );
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(_friendlyAuthError(e.message)),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                          if (e.message.contains('Too Many Requests') || e.message.contains('429')) {
+                            setState(() {
+                              _retryAfter = DateTime.now().add(const Duration(seconds: 30));
+                            });
                           }
                         } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('An unexpected error occurred.'),
-                                backgroundColor: Colors.redAccent,
-                              ),
-                            );
-                          }
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('An unexpected error occurred.'),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
                         } finally {
                           if (mounted) setState(() => _isLoading = false);
                         }
                       }
-                    },
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F6F52),
                 foregroundColor: Colors.white,
@@ -267,7 +288,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                   borderRadius: BorderRadius.circular(16.0),
                 ),
                 elevation: 2.0,
-                shadowColor: const Color(0xFF4F6F52).withOpacity(0.4),
+                shadowColor: const Color(0xFF4F6F52).withValues(alpha: 0.4),
               ),
               child: _isLoading
                   ? const SizedBox(
@@ -288,9 +309,28 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                     ),
             ),
           ),
+          if (_isRateLimited) ...[
+            const SizedBox(height: 12.0),
+            Text(
+              'Too many login attempts. Please wait 30 seconds and try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.redAccent.shade200,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  String _friendlyAuthError(String message) {
+    if (message.contains('Too Many Requests') || message.contains('429')) {
+      return 'Too many login attempts right now. Please wait a bit and try again.';
+    }
+    return message;
   }
 }
 
@@ -310,7 +350,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  DateTime? _retryAfter;
   final _authService = AuthService();
+
+  bool get _isRateLimited =>
+      _retryAfter != null && DateTime.now().isBefore(_retryAfter!);
 
   @override
   void dispose() {
@@ -323,6 +367,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
 
   @override
   Widget build(BuildContext context) {
+    final canSubmit = !_isLoading && !_isRateLimited;
     return Form(
       key: _formKey,
       child: Column(
@@ -393,7 +438,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              if (!_looksLikeEmail(value)) {
                 return 'Please enter a valid email address';
               }
               return null;
@@ -505,9 +550,8 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           SizedBox(
             height: 56.0,
             child: ElevatedButton(
-              onPressed: _isLoading
-                  ? null
-                  : () async {
+              onPressed: canSubmit
+                  ? () async {
                       if (_formKey.currentState!.validate()) {
                         setState(() => _isLoading = true);
                         try {
@@ -516,57 +560,59 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                             password: _passwordController.text,
                             fullName: _nameController.text.trim(),
                           );
-                          if (context.mounted) {
-                            if (response.session != null) {
-                              // Email confirmation is OFF — user is logged in
-                              Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                  builder: (_) => const HomePlaceholderPage(),
-                                ),
-                                (route) => false,
-                              );
-                            } else {
-                              // Email confirmation is ON — tell user to check email
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Account created! Please check your email to confirm, then log in.',
-                                  ),
-                                  duration: Duration(seconds: 5),
-                                  backgroundColor: Color(0xFF4F6F52),
-                                ),
-                              );
-                              Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                  builder: (_) => const LoginPage(),
-                                ),
-                                (route) => false,
-                              );
-                            }
-                          }
-                        } on AuthException catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(e.message),
-                                backgroundColor: Colors.redAccent,
+                          if (!context.mounted) return;
+                          debugPrint('Signup completed. session=${response.session != null}');
+                          if (response.session != null) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const HomePlaceholderPage(),
                               ),
+                              (route) => false,
                             );
-                          }
-                        } catch (e) {
-                          if (mounted) {
+                          } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('An unexpected error occurred.'),
-                                backgroundColor: Colors.redAccent,
+                                content: Text(
+                                  'Account created! Please check your email to confirm, then log in.',
+                                ),
+                                duration: Duration(seconds: 5),
+                                backgroundColor: Color(0xFF4F6F52),
                               ),
                             );
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const LoginPage(),
+                              ),
+                              (route) => false,
+                            );
                           }
+                        } on AuthException catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(_friendlyAuthError(e.message)),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                          if (e.message.contains('Too Many Requests') || e.message.contains('429')) {
+                            setState(() {
+                              _retryAfter = DateTime.now().add(const Duration(seconds: 30));
+                            });
+                          }
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('An unexpected error occurred.'),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
                         } finally {
                           if (mounted) setState(() => _isLoading = false);
                         }
                       }
-                    },
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F6F52),
                 foregroundColor: Colors.white,
@@ -574,7 +620,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                   borderRadius: BorderRadius.circular(16.0),
                 ),
                 elevation: 2.0,
-                shadowColor: const Color(0xFF4F6F52).withOpacity(0.4),
+                shadowColor: const Color(0xFF4F6F52).withValues(alpha: 0.4),
               ),
               child: _isLoading
                   ? const SizedBox(
@@ -595,9 +641,28 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                     ),
             ),
           ),
+          if (_isRateLimited) ...[
+            const SizedBox(height: 12.0),
+            Text(
+              'Too many signup attempts. Please wait 30 seconds and try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.redAccent.shade200,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  String _friendlyAuthError(String message) {
+    if (message.contains('Too Many Requests') || message.contains('429')) {
+      return 'Too many signup attempts right now. Please wait a bit and try again.';
+    }
+    return message;
   }
 }
 
@@ -610,19 +675,19 @@ class SocialLogins extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Divider(color: const Color(0xFF739072).withOpacity(0.25))),
+            Expanded(child: Divider(color: const Color(0xFF739072).withValues(alpha: 0.25))),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
                 'or continue with',
                 style: TextStyle(
-                  color: const Color(0xFF739072).withOpacity(0.6),
+                  color: const Color(0xFF739072).withValues(alpha: 0.6),
                   fontSize: 13.0,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            Expanded(child: Divider(color: const Color(0xFF739072).withOpacity(0.25))),
+            Expanded(child: Divider(color: const Color(0xFF739072).withValues(alpha: 0.25))),
           ],
         ),
         const SizedBox(height: 20.0),
@@ -630,7 +695,7 @@ class SocialLogins extends StatelessWidget {
         OutlinedButton(
           onPressed: () {},
           style: OutlinedButton.styleFrom(
-            side: BorderSide(color: const Color(0xFF739072).withOpacity(0.25)),
+            side: BorderSide(color: const Color(0xFF739072).withValues(alpha: 0.25)),
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.0),
@@ -666,7 +731,7 @@ class SocialLogins extends StatelessWidget {
         OutlinedButton(
           onPressed: () {},
           style: OutlinedButton.styleFrom(
-            side: BorderSide(color: const Color(0xFF739072).withOpacity(0.25)),
+            side: BorderSide(color: const Color(0xFF739072).withValues(alpha: 0.25)),
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.0),

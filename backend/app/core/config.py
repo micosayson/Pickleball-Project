@@ -29,6 +29,10 @@ class Settings(BaseSettings):
                 return False
         return value
 
+    @property
+    def database_url(self) -> str:
+        return self.DATABASE_URL
+
 
 @lru_cache
 def get_settings() -> Settings:

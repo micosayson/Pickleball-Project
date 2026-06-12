@@ -4,3 +4,6 @@ __pycache__/
 backend/.env
 frontend/.dart_tool/
 frontend/build/
+.venv/
+venv/
+

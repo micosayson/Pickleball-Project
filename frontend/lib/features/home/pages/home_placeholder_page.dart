@@ -31,6 +31,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   late final Future<List<ScoreSubmissionSummary>> _scoresFuture;
   String _lastResult = 'Backend checks have not run yet.';
   bool _isLoading = false;
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -80,6 +81,25 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 900;
+            final content = _selectedIndex == 0
+                ? _PlayTab(
+                    isWide: isWide,
+                    fullName: fullName,
+                    courtsFuture: _courtsFuture,
+                    eventsFuture: _eventsFuture,
+                    scoresFuture: _scoresFuture,
+                    joinCourt: _joinCourt,
+                    joinEvent: _joinEvent,
+                  )
+                : _SettingsTab(
+                    isWide: isWide,
+                    isLoading: _isLoading,
+                    lastResult: _lastResult,
+                    fullName: fullName,
+                    user: user,
+                    runRequest: _runRequest,
+                  );
+
             return CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(
@@ -118,47 +138,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                   sliver: SliverToBoxAdapter(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1120),
-                      child: isWide
-                          ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  flex: 7,
-                                  child: _MainColumn(
-                                    isLoading: _isLoading,
-                                    lastResult: _lastResult,
-                                    fullName: fullName,
-                                    user: user,
-                                    courtsFuture: _courtsFuture,
-                                    eventsFuture: _eventsFuture,
-                                    scoresFuture: _scoresFuture,
-                                    joinCourt: _joinCourt,
-                                    joinEvent: _joinEvent,
-                                    runRequest: _runRequest,
-                                  ),
-                                ),
-                                const SizedBox(width: 20),
-                                const Expanded(flex: 4, child: _SideColumn()),
-                              ],
-                            )
-                          : Column(
-                              children: [
-                                _MainColumn(
-                                  isLoading: _isLoading,
-                                  lastResult: _lastResult,
-                                  fullName: fullName,
-                                  user: user,
-                                  courtsFuture: _courtsFuture,
-                                  eventsFuture: _eventsFuture,
-                                  scoresFuture: _scoresFuture,
-                                  joinCourt: _joinCourt,
-                                  joinEvent: _joinEvent,
-                                  runRequest: _runRequest,
-                                ),
-                                const SizedBox(height: 16),
-                                const _SideColumn(),
-                              ],
-                            ),
+                      child: content,
                     ),
                   ),
                 ),
@@ -166,6 +146,22 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
             );
           },
         ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.sports_tennis_rounded),
+            label: 'Play',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_rounded),
+            label: 'Settings',
+          ),
+        ],
       ),
     );
   }
@@ -181,6 +177,109 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     return _runRequest(
       () => const CourtMembershipService().joinCourt(court.id),
       'POST /court-memberships/${court.id}',
+    );
+  }
+}
+
+class _PlayTab extends StatelessWidget {
+  const _PlayTab({
+    required this.isWide,
+    required this.fullName,
+    required this.courtsFuture,
+    required this.eventsFuture,
+    required this.scoresFuture,
+    required this.joinCourt,
+    required this.joinEvent,
+  });
+
+  final bool isWide;
+  final String fullName;
+  final Future<List<CourtSummary>> courtsFuture;
+  final Future<List<EventSummary>> eventsFuture;
+  final Future<List<ScoreSubmissionSummary>> scoresFuture;
+  final Future<void> Function(CourtSummary) joinCourt;
+  final Future<void> Function(EventSummary) joinEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isWide) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 7,
+            child: _MainColumn(
+              fullName: fullName,
+              courtsFuture: courtsFuture,
+              eventsFuture: eventsFuture,
+              scoresFuture: scoresFuture,
+              joinCourt: joinCourt,
+              joinEvent: joinEvent,
+            ),
+          ),
+          const SizedBox(width: 20),
+          const Expanded(flex: 4, child: _NextMatchCard()),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        _MainColumn(
+          fullName: fullName,
+          courtsFuture: courtsFuture,
+          eventsFuture: eventsFuture,
+          scoresFuture: scoresFuture,
+          joinCourt: joinCourt,
+          joinEvent: joinEvent,
+        ),
+        const SizedBox(height: 16),
+        const _NextMatchCard(),
+      ],
+    );
+  }
+}
+
+class _SettingsTab extends StatelessWidget {
+  const _SettingsTab({
+    required this.isWide,
+    required this.isLoading,
+    required this.lastResult,
+    required this.fullName,
+    required this.user,
+    required this.runRequest,
+  });
+
+  final bool isWide;
+  final bool isLoading;
+  final String lastResult;
+  final String fullName;
+  final User? user;
+  final Future<void> Function(Future<dynamic> Function(), String) runRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    final checks = _DeveloperChecks(
+      isLoading: isLoading,
+      lastResult: lastResult,
+      fullName: fullName,
+      user: user,
+      runRequest: runRequest,
+    );
+
+    if (isWide) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Expanded(flex: 4, child: _ReadinessCard()),
+          const SizedBox(width: 20),
+          Expanded(flex: 7, child: checks),
+        ],
+      );
+    }
+
+    return Column(
+      children: [const _ReadinessCard(), const SizedBox(height: 16), checks],
     );
   }
 }
@@ -244,28 +343,20 @@ class _HomeHeader extends StatelessWidget {
 
 class _MainColumn extends StatelessWidget {
   const _MainColumn({
-    required this.isLoading,
-    required this.lastResult,
     required this.fullName,
-    required this.user,
     required this.courtsFuture,
     required this.eventsFuture,
     required this.scoresFuture,
     required this.joinCourt,
     required this.joinEvent,
-    required this.runRequest,
   });
 
-  final bool isLoading;
-  final String lastResult;
   final String fullName;
-  final User? user;
   final Future<List<CourtSummary>> courtsFuture;
   final Future<List<EventSummary>> eventsFuture;
   final Future<List<ScoreSubmissionSummary>> scoresFuture;
   final Future<void> Function(CourtSummary) joinCourt;
   final Future<void> Function(EventSummary) joinEvent;
-  final Future<void> Function(Future<dynamic> Function(), String) runRequest;
 
   @override
   Widget build(BuildContext context) {
@@ -288,14 +379,6 @@ class _MainColumn extends StatelessWidget {
         _RecentScoresPanel(scoresFuture: scoresFuture),
         const SizedBox(height: 16),
         const _QuickActions(),
-        const SizedBox(height: 16),
-        _DeveloperChecks(
-          isLoading: isLoading,
-          lastResult: lastResult,
-          fullName: fullName,
-          user: user,
-          runRequest: runRequest,
-        ),
       ],
     );
   }
@@ -1181,21 +1264,6 @@ class _ActionTile extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SideColumn extends StatelessWidget {
-  const _SideColumn();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: const [
-        _NextMatchCard(),
-        SizedBox(height: 16),
-        _ReadinessCard(),
-      ],
     );
   }
 }

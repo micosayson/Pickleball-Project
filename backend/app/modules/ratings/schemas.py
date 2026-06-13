@@ -9,7 +9,7 @@ class RatingCreate(BaseModel):
     court_id: UUID | None = None
     user_id: UUID
     rating_model: str = "elo"
-    rating_value: Decimal = Field(default=0, ge=0)
+    rating_value: Decimal = Field(default=Decimal("0"), ge=0)
     rating_deviation: Decimal | None = Field(default=None, ge=0)
     volatility: Decimal | None = Field(default=None, ge=0)
     matches_played: int = Field(default=0, ge=0)

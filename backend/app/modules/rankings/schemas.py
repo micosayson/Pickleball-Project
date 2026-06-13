@@ -12,7 +12,7 @@ class RankingCreate(BaseModel):
     player_rating_id: UUID | None = None
     ranking_model: str = "rating_based"
     rank_value: int = Field(ge=1)
-    points: Decimal = Field(default=0, ge=0)
+    points: Decimal = Field(default=Decimal("0"), ge=0)
     scope_label: str | None = None
     snapshot_at: datetime
 

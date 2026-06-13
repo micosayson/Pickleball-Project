@@ -14,6 +14,8 @@ class RatingRepository:
         query = self.db.query(PlayerRating).filter(PlayerRating.deleted_at.is_(None))
         if scope.court_id:
             query = query.filter(PlayerRating.court_id == UUID(scope.court_id))
+        elif scope.tenant_id:
+            query = query.filter(PlayerRating.tenant_id == UUID(scope.tenant_id))
         return query
 
     def list(

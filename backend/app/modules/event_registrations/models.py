@@ -15,6 +15,12 @@ class EventRegistration(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "event_registrations"
     __table_args__ = (UniqueConstraint("event_id", "user_id", name="uq_event_registrations_event_user"),)
 
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     court_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),

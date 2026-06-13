@@ -14,9 +14,15 @@ from app.db.mixins import AuditMixin, UUIDPrimaryKeyMixin
 class PlayerRating(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "player_ratings"
     __table_args__ = (
-        UniqueConstraint("court_id", "user_id", "rating_model", name="uq_player_ratings_scope"),
+        UniqueConstraint("tenant_id", "court_id", "user_id", "rating_model", name="uq_player_ratings_scope"),
     )
 
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     court_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),

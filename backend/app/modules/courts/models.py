@@ -13,8 +13,14 @@ from app.db.mixins import AuditMixin, UUIDPrimaryKeyMixin
 
 class Court(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "courts"
-    __table_args__ = (UniqueConstraint("slug", name="uq_courts_slug"),)
+    __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_courts_tenant_slug"),)
 
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     owner_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
@@ -29,6 +35,7 @@ class Court(UUIDPrimaryKeyMixin, AuditMixin, Base):
     contact_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
 
+    tenant: Mapped["Tenant"] = relationship("Tenant")
     owner_user: Mapped["User"] = relationship("User", back_populates="owned_courts", foreign_keys=[owner_user_id])
     invitations: Mapped[list["Invitation"]] = relationship("Invitation", back_populates="court")
     events: Mapped[list["Event"]] = relationship("Event", back_populates="court")

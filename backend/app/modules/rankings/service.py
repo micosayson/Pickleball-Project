@@ -41,9 +41,18 @@ class RankingService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Ranking court does not match request court scope",
             )
+        if scope.tenant_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ranking creation requires tenant scope",
+            )
         court_id = payload.court_id or (UUID(scope.court_id) if scope.court_id else None)
         return self.repository.create(
-            Ranking(**payload.model_dump(exclude={"court_id"}), court_id=court_id)
+            Ranking(
+                **payload.model_dump(exclude={"court_id"}),
+                tenant_id=UUID(scope.tenant_id),
+                court_id=court_id,
+            )
         )
 
     def update_ranking(self, ranking_id: UUID, payload: RankingUpdate, scope: TenantContext) -> Ranking:

@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.v1.deps import get_current_principal
+from app.api.v1.deps import get_current_principal, get_tenant_context
 from app.core.security import Principal
+from app.core.tenancy import TenantContext
 from app.db.session import get_db
 from app.modules.courts.repository import CourtRepository
 from app.modules.courts.schemas import CourtRead
@@ -21,6 +22,7 @@ def list_courts(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     _: Principal = Depends(get_current_principal),
+    scope: TenantContext = Depends(get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    return _service(db).list_courts(status=status, limit=limit, offset=offset)
+    return _service(db).list_courts(scope=scope, status=status, limit=limit, offset=offset)

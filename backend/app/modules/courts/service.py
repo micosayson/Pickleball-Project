@@ -1,3 +1,4 @@
+from app.core.tenancy import TenantContext
 from app.modules.courts.repository import CourtRepository
 from app.modules.courts.models import Court
 
@@ -9,8 +10,9 @@ class CourtService:
     def list_courts(
         self,
         *,
+        scope: TenantContext | None = None,
         status: str | None,
         limit: int,
         offset: int,
     ) -> list[Court]:
-        return self.repository.list(status=status, limit=limit, offset=offset)
+        return self.repository.list(scope=scope, status=status, limit=limit, offset=offset)

@@ -14,6 +14,8 @@ class MatchRepository:
         query = self.db.query(Match).filter(Match.deleted_at.is_(None))
         if scope.court_id:
             query = query.filter(Match.court_id == UUID(scope.court_id))
+        elif scope.tenant_id:
+            query = query.filter(Match.tenant_id == UUID(scope.tenant_id))
         return query
 
     def list(

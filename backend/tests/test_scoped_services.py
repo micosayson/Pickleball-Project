@@ -52,6 +52,22 @@ def test_tenant_context_reports_scope():
     assert TenantContext(tenant_id=str(uuid4())).has_scope is True
 
 
+def test_tenant_context_checks_allowed_scope():
+    tenant_id = str(uuid4())
+    court_id = str(uuid4())
+    context = TenantContext(
+        tenant_id=tenant_id,
+        court_id=court_id,
+        allowed_tenant_ids=(tenant_id,),
+        allowed_court_ids=(court_id,),
+    )
+
+    assert context.can_access_tenant(tenant_id) is True
+    assert context.can_access_court(court_id) is True
+    assert context.can_access_tenant(str(uuid4())) is False
+    assert context.can_access_court(str(uuid4())) is False
+
+
 def test_court_service_passes_discovery_filters_to_repository():
     repo = FakeRepository()
     service = CourtService(repo)
@@ -116,11 +132,16 @@ def test_match_update_rejects_cross_court_change():
 def test_rating_create_uses_court_scope_when_payload_omits_court():
     repo = FakeRepository()
     service = RatingService(repo)
+    tenant_id = uuid4()
     court_id = uuid4()
     payload = RatingCreate(user_id=uuid4())
 
-    created = service.create_rating(payload, TenantContext(court_id=str(court_id)))
+    created = service.create_rating(
+        payload,
+        TenantContext(tenant_id=str(tenant_id), court_id=str(court_id)),
+    )
 
+    assert created.tenant_id == tenant_id
     assert created.court_id == court_id
 
 
@@ -135,6 +156,9 @@ def test_ranking_create_rejects_cross_court_scope():
     )
 
     with pytest.raises(HTTPException) as exc:
-        service.create_ranking(payload, TenantContext(court_id=str(uuid4())))
+        service.create_ranking(
+            payload,
+            TenantContext(tenant_id=str(uuid4()), court_id=str(uuid4())),
+        )
 
     assert exc.value.status_code == 403

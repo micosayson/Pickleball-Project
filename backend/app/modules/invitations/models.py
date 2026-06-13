@@ -14,6 +14,12 @@ from app.db.mixins import AuditMixin, UUIDPrimaryKeyMixin
 class Invitation(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "invitations"
 
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     court_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),

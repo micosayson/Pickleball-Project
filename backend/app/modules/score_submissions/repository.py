@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from uuid import UUID
 
+from app.core.tenancy import TenantContext
 from app.modules.score_submissions.models import ScoreSubmission
 
 
@@ -11,6 +12,7 @@ class ScoreSubmissionRepository:
     def list(
         self,
         *,
+        scope: TenantContext | None = None,
         court_id: UUID | None = None,
         event_id: UUID | None = None,
         match_id: UUID | None = None,
@@ -19,6 +21,11 @@ class ScoreSubmissionRepository:
         offset: int = 0,
     ) -> list[ScoreSubmission]:
         query = self.db.query(ScoreSubmission)
+        if scope is not None:
+            if scope.court_id:
+                query = query.filter(ScoreSubmission.court_id == UUID(scope.court_id))
+            elif scope.tenant_id:
+                query = query.filter(ScoreSubmission.tenant_id == UUID(scope.tenant_id))
         if court_id is not None:
             query = query.filter(ScoreSubmission.court_id == court_id)
         if event_id is not None:

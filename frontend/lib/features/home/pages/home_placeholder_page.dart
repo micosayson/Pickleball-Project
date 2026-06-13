@@ -17,6 +17,17 @@ const _muted = Color(0xFF6A7A70);
 const _chalk = Color(0xFFF7FAF5);
 const _line = Color(0xFFE1E9DE);
 
+enum _PlayPage {
+  status,
+  courtSessions,
+  sessionDetails,
+  mySession,
+  upcomingMatch,
+  activeMatch,
+  matchResult,
+  waitingVerification,
+}
+
 class HomePlaceholderPage extends StatefulWidget {
   const HomePlaceholderPage({super.key});
 
@@ -28,12 +39,14 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   late final Future<List<CourtSummary>> _courtsFuture;
   CourtSummary? _selectedCourt;
   Future<List<EventSummary>>? _courtEventsFuture;
+  EventSummary? _selectedSession;
   EventSummary? _activeSession;
   EventRegistrationSummary? _activeRegistration;
   String _lastResult = 'Backend checks have not run yet.';
   bool _isLoading = false;
   bool _matchFinished = false;
   int _selectedIndex = 0;
+  _PlayPage _playPage = _PlayPage.status;
 
   @override
   void initState() {
@@ -86,12 +99,24 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                 fullName: fullName,
                 selectedCourt: _selectedCourt,
                 courtEventsFuture: _courtEventsFuture,
+                selectedSession: _selectedSession,
                 activeSession: _activeSession,
                 activeRegistration: _activeRegistration,
                 matchFinished: _matchFinished,
+                playPage: _playPage,
                 joinLobby: _joinLobby,
                 onMatchFinished: _markMatchFinished,
                 onOpenCourts: () => setState(() => _selectedIndex = 1),
+                onShowStatus: () => _showPlayPage(_PlayPage.status),
+                onShowSessions: () => _showPlayPage(_PlayPage.courtSessions),
+                onSelectSession: _selectSession,
+                onShowMySession: () => _showPlayPage(_PlayPage.mySession),
+                onShowUpcomingMatch: () =>
+                    _showPlayPage(_PlayPage.upcomingMatch),
+                onGoToCourt: () => _showPlayPage(_PlayPage.activeMatch),
+                onShowMatchResult: () => _showPlayPage(_PlayPage.matchResult),
+                onReturnToQueue: _returnToQueue,
+                onLeaveCourt: _leaveCourt,
               ),
               1 => _CourtsTab(
                 courtsFuture: _courtsFuture,
@@ -109,6 +134,9 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
             };
 
             return CustomScrollView(
+              key: ValueKey(
+                '$_selectedIndex-$_playPage-${_selectedCourt?.id}-${_selectedSession?.id}-${_activeSession?.id}',
+              ),
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
@@ -187,9 +215,11 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
       final registration = await const EventService().joinLobby(event.id);
       if (mounted) {
         setState(() {
+          _selectedSession = event;
           _activeSession = event;
           _activeRegistration = registration;
           _matchFinished = false;
+          _playPage = _PlayPage.mySession;
         });
       }
       return registration;
@@ -200,6 +230,45 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     setState(() {
       _matchFinished = true;
       _lastResult = 'Match #102 marked finished. Waiting for verification.';
+      _playPage = _PlayPage.waitingVerification;
+    });
+  }
+
+  void _selectSession(EventSummary event) {
+    setState(() {
+      _selectedSession = event;
+      _playPage = _PlayPage.sessionDetails;
+      _selectedIndex = 0;
+    });
+  }
+
+  void _showPlayPage(_PlayPage page) {
+    setState(() {
+      _playPage = page;
+      _selectedIndex = 0;
+    });
+  }
+
+  void _returnToQueue() {
+    setState(() {
+      _matchFinished = false;
+      _lastResult = 'Match verified. Player returned to queue.';
+      _playPage = _PlayPage.mySession;
+      _selectedIndex = 0;
+    });
+  }
+
+  void _leaveCourt() {
+    setState(() {
+      _activeSession = null;
+      _activeRegistration = null;
+      _matchFinished = false;
+      _selectedSession = null;
+      _playPage = _selectedCourt == null
+          ? _PlayPage.status
+          : _PlayPage.courtSessions;
+      _selectedIndex = 0;
+      _lastResult = 'Left court. Player removed from the local queue view.';
     });
   }
 
@@ -215,9 +284,11 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
             limit: 12,
             courtId: court.id,
           );
+          _selectedSession = null;
           _activeSession = null;
           _activeRegistration = null;
           _matchFinished = false;
+          _playPage = _PlayPage.courtSessions;
           _selectedIndex = 0;
         });
       }
@@ -231,36 +302,69 @@ class _PlayTab extends StatelessWidget {
     required this.fullName,
     required this.selectedCourt,
     required this.courtEventsFuture,
+    required this.selectedSession,
     required this.activeSession,
     required this.activeRegistration,
     required this.matchFinished,
+    required this.playPage,
     required this.joinLobby,
     required this.onMatchFinished,
     required this.onOpenCourts,
+    required this.onShowStatus,
+    required this.onShowSessions,
+    required this.onSelectSession,
+    required this.onShowMySession,
+    required this.onShowUpcomingMatch,
+    required this.onGoToCourt,
+    required this.onShowMatchResult,
+    required this.onReturnToQueue,
+    required this.onLeaveCourt,
   });
 
   final String fullName;
   final CourtSummary? selectedCourt;
   final Future<List<EventSummary>>? courtEventsFuture;
+  final EventSummary? selectedSession;
   final EventSummary? activeSession;
   final EventRegistrationSummary? activeRegistration;
   final bool matchFinished;
+  final _PlayPage playPage;
   final Future<void> Function(EventSummary) joinLobby;
   final VoidCallback onMatchFinished;
   final VoidCallback onOpenCourts;
+  final VoidCallback onShowStatus;
+  final VoidCallback onShowSessions;
+  final void Function(EventSummary) onSelectSession;
+  final VoidCallback onShowMySession;
+  final VoidCallback onShowUpcomingMatch;
+  final VoidCallback onGoToCourt;
+  final VoidCallback onShowMatchResult;
+  final VoidCallback onReturnToQueue;
+  final VoidCallback onLeaveCourt;
 
   @override
   Widget build(BuildContext context) {
-    return _MainColumn(
+    return _PlayFlowPage(
       fullName: fullName,
       selectedCourt: selectedCourt,
       courtEventsFuture: courtEventsFuture,
+      selectedSession: selectedSession,
       activeSession: activeSession,
       activeRegistration: activeRegistration,
       matchFinished: matchFinished,
+      playPage: playPage,
       joinLobby: joinLobby,
       onMatchFinished: onMatchFinished,
       onOpenCourts: onOpenCourts,
+      onShowStatus: onShowStatus,
+      onShowSessions: onShowSessions,
+      onSelectSession: onSelectSession,
+      onShowMySession: onShowMySession,
+      onShowUpcomingMatch: onShowUpcomingMatch,
+      onGoToCourt: onGoToCourt,
+      onShowMatchResult: onShowMatchResult,
+      onReturnToQueue: onReturnToQueue,
+      onLeaveCourt: onLeaveCourt,
     );
   }
 }
@@ -516,60 +620,376 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
-class _MainColumn extends StatelessWidget {
-  const _MainColumn({
+class _PlayFlowPage extends StatelessWidget {
+  const _PlayFlowPage({
     required this.fullName,
     required this.selectedCourt,
     required this.courtEventsFuture,
+    required this.selectedSession,
     required this.activeSession,
     required this.activeRegistration,
     required this.matchFinished,
+    required this.playPage,
     required this.joinLobby,
     required this.onMatchFinished,
     required this.onOpenCourts,
+    required this.onShowStatus,
+    required this.onShowSessions,
+    required this.onSelectSession,
+    required this.onShowMySession,
+    required this.onShowUpcomingMatch,
+    required this.onGoToCourt,
+    required this.onShowMatchResult,
+    required this.onReturnToQueue,
+    required this.onLeaveCourt,
   });
 
   final String fullName;
   final CourtSummary? selectedCourt;
   final Future<List<EventSummary>>? courtEventsFuture;
+  final EventSummary? selectedSession;
   final EventSummary? activeSession;
   final EventRegistrationSummary? activeRegistration;
   final bool matchFinished;
+  final _PlayPage playPage;
   final Future<void> Function(EventSummary) joinLobby;
   final VoidCallback onMatchFinished;
   final VoidCallback onOpenCourts;
+  final VoidCallback onShowStatus;
+  final VoidCallback onShowSessions;
+  final void Function(EventSummary) onSelectSession;
+  final VoidCallback onShowMySession;
+  final VoidCallback onShowUpcomingMatch;
+  final VoidCallback onGoToCourt;
+  final VoidCallback onShowMatchResult;
+  final VoidCallback onReturnToQueue;
+  final VoidCallback onLeaveCourt;
 
   @override
   Widget build(BuildContext context) {
+    if (playPage == _PlayPage.courtSessions &&
+        selectedCourt != null &&
+        courtEventsFuture != null) {
+      return _CourtSessionsPage(
+        court: selectedCourt!,
+        eventsFuture: courtEventsFuture!,
+        onBack: onShowStatus,
+        onChangeCourt: onOpenCourts,
+        onSelectSession: onSelectSession,
+      );
+    }
+
+    if (playPage == _PlayPage.sessionDetails &&
+        selectedCourt != null &&
+        selectedSession != null) {
+      return _SessionDetailsPage(
+        court: selectedCourt!,
+        event: selectedSession!,
+        onBack: onShowSessions,
+        onJoinLobby: () => joinLobby(selectedSession!),
+      );
+    }
+
+    if (playPage == _PlayPage.mySession &&
+        selectedCourt != null &&
+        activeSession != null) {
+      return _MySessionPage(
+        court: selectedCourt!,
+        session: activeSession!,
+        registration: activeRegistration,
+        onShowUpcomingMatch: onShowUpcomingMatch,
+        onLeaveCourt: onLeaveCourt,
+      );
+    }
+
+    if (playPage == _PlayPage.upcomingMatch && selectedCourt != null) {
+      return _UpcomingMatchPage(
+        court: selectedCourt!,
+        onBack: onShowStatus,
+        onGoToCourt: onGoToCourt,
+        onLeaveCourt: onLeaveCourt,
+      );
+    }
+
+    if (playPage == _PlayPage.activeMatch && selectedCourt != null) {
+      return _ActiveMatchPage(
+        court: selectedCourt!,
+        onShowMatchResult: onShowMatchResult,
+        onLeaveCourt: onLeaveCourt,
+      );
+    }
+
+    if (playPage == _PlayPage.matchResult && selectedCourt != null) {
+      return _MatchResultPage(
+        court: selectedCourt!,
+        matchFinished: matchFinished,
+        onMatchFinished: onMatchFinished,
+      );
+    }
+
+    if (playPage == _PlayPage.waitingVerification && selectedCourt != null) {
+      return _WaitingVerificationPage(
+        court: selectedCourt!,
+        onReturnToQueue: onReturnToQueue,
+      );
+    }
+
+    return _PlayStatusPage(
+      fullName: fullName,
+      selectedCourt: selectedCourt,
+      activeSession: activeSession,
+      matchFinished: matchFinished,
+      onOpenCourts: onOpenCourts,
+      onShowSessions: onShowSessions,
+      onShowMySession: matchFinished ? onReturnToQueue : onShowMySession,
+    );
+  }
+}
+
+class _PlayStatusPage extends StatelessWidget {
+  const _PlayStatusPage({
+    required this.fullName,
+    required this.selectedCourt,
+    required this.activeSession,
+    required this.matchFinished,
+    required this.onOpenCourts,
+    required this.onShowSessions,
+    required this.onShowMySession,
+  });
+
+  final String fullName;
+  final CourtSummary? selectedCourt;
+  final EventSummary? activeSession;
+  final bool matchFinished;
+  final VoidCallback onOpenCourts;
+  final VoidCallback onShowSessions;
+  final VoidCallback onShowMySession;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = activeSession == null
+        ? 'Ready for the next rally, $fullName?'
+        : matchFinished
+        ? 'Your match is waiting for verification'
+        : 'You are checked in and queued';
+    final detail = activeSession == null
+        ? 'Choose a court, review its sessions, then check in when you arrive.'
+        : matchFinished
+        ? 'After the queue master verifies the result, you return to the queue.'
+        : 'Stay in My session until the next match assignment is ready.';
+
     return Column(
       children: [
-        _HeroPanel(fullName: fullName),
+        _HeroPanel(title: title, detail: detail),
         const SizedBox(height: 16),
-        if (selectedCourt == null || courtEventsFuture == null)
-          _SelectCourtFirstPanel(onOpenCourts: onOpenCourts)
-        else if (activeSession == null)
-          _EventDiscoveryPanel(
-            court: selectedCourt!,
-            eventsFuture: courtEventsFuture!,
-            onJoinLobby: joinLobby,
-          )
-        else
-          _CheckedInSessionPanel(
-            court: selectedCourt!,
-            session: activeSession!,
-            registration: activeRegistration,
-            matchFinished: matchFinished,
-            onMatchFinished: onMatchFinished,
+        _Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SectionTitle(
+                icon: activeSession == null
+                    ? Icons.route_rounded
+                    : Icons.fact_check_rounded,
+                title: 'Play status',
+              ),
+              const SizedBox(height: 14),
+              _StatusActionCard(
+                icon: selectedCourt == null
+                    ? Icons.location_on_rounded
+                    : activeSession == null
+                    ? Icons.event_available_rounded
+                    : Icons.notifications_active_rounded,
+                title: selectedCourt == null
+                    ? 'No court selected'
+                    : activeSession == null
+                    ? selectedCourt!.name
+                    : activeSession!.name,
+                detail: selectedCourt == null
+                    ? 'Pick a court to see its live sessions.'
+                    : activeSession == null
+                    ? 'Review available sessions for this court.'
+                    : 'Open your current session and queue status.',
+                actionLabel: selectedCourt == null
+                    ? 'Choose court'
+                    : activeSession == null
+                    ? 'View sessions'
+                    : matchFinished
+                    ? 'Return to queue'
+                    : 'View my session',
+                onPressed: selectedCourt == null
+                    ? onOpenCourts
+                    : activeSession == null
+                    ? onShowSessions
+                    : onShowMySession,
+              ),
+            ],
           ),
+        ),
       ],
     );
   }
 }
 
-class _HeroPanel extends StatelessWidget {
-  const _HeroPanel({required this.fullName});
+class _PageHeader extends StatelessWidget {
+  const _PageHeader({
+    required this.title,
+    required this.detail,
+    required this.icon,
+    this.onBack,
+    this.trailing,
+  });
 
-  final String fullName;
+  final String title;
+  final String detail;
+  final IconData icon;
+  final VoidCallback? onBack;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      color: _courtGreen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (onBack != null) ...[
+                IconButton.filledTonal(
+                  onPressed: onBack,
+                  tooltip: 'Back',
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.16),
+                  ),
+                ),
+                child: Icon(icon, color: Colors.white),
+              ),
+              const Spacer(),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              height: 1.08,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            detail,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.82),
+              fontSize: 15,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusActionCard extends StatelessWidget {
+  const _StatusActionCard({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.actionLabel,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final String actionLabel;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _chalk,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _courtGreen,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      detail,
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 12.5,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: onPressed,
+              style: _primaryButtonStyle(),
+              child: Text(actionLabel),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroPanel extends StatelessWidget {
+  const _HeroPanel({required this.title, required this.detail});
+
+  final String title;
+  final String detail;
 
   @override
   Widget build(BuildContext context) {
@@ -596,7 +1016,7 @@ class _HeroPanel extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            'Ready for the next rally, $fullName?',
+            title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -605,7 +1025,7 @@ class _HeroPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Select a court, join its lobby, and wait for your upcoming match.',
+            detail,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.82),
               fontSize: 15,
@@ -759,74 +1179,50 @@ class _CourtTile extends StatelessWidget {
   }
 }
 
-class _SelectCourtFirstPanel extends StatelessWidget {
-  const _SelectCourtFirstPanel({required this.onOpenCourts});
-
-  final VoidCallback onOpenCourts;
-
-  @override
-  Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(
-            icon: Icons.location_on_rounded,
-            title: 'Court lobby',
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Select a court before joining a session lobby.',
-            style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
-          ),
-          const SizedBox(height: 14),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              onPressed: onOpenCourts,
-              icon: const Icon(Icons.map_rounded, size: 18),
-              label: const Text('Choose court'),
-              style: FilledButton.styleFrom(
-                backgroundColor: _ink,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EventDiscoveryPanel extends StatelessWidget {
-  const _EventDiscoveryPanel({
+class _CourtSessionsPage extends StatelessWidget {
+  const _CourtSessionsPage({
     required this.court,
     required this.eventsFuture,
-    required this.onJoinLobby,
+    required this.onBack,
+    required this.onChangeCourt,
+    required this.onSelectSession,
   });
 
   final CourtSummary court;
   final Future<List<EventSummary>> eventsFuture;
-  final Future<void> Function(EventSummary) onJoinLobby;
+  final VoidCallback onBack;
+  final VoidCallback onChangeCourt;
+  final void Function(EventSummary) onSelectSession;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        _PageHeader(
+          title: 'Court sessions',
+          detail:
+              '${court.name} is selected. Pick one session to review before checking in.',
+          icon: Icons.event_available_rounded,
+          onBack: onBack,
+          trailing: TextButton.icon(
+            onPressed: onChangeCourt,
+            icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+            label: const Text('Change'),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+          ),
+        ),
+        const SizedBox(height: 16),
         _Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _SectionTitle(
-                icon: Icons.event_available_rounded,
-                title: '${court.name} sessions',
+              const _SectionTitle(
+                icon: Icons.format_list_bulleted_rounded,
+                title: 'Available sessions',
               ),
               const SizedBox(height: 6),
               const Text(
-                'Join a session when you are ready to check in and enter the automatic match queue.',
+                'Choose one session first. The next page handles the lobby check-in.',
                 style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
               ),
               const SizedBox(height: 14),
@@ -858,10 +1254,9 @@ class _EventDiscoveryPanel extends StatelessWidget {
                   return Column(
                     children: [
                       for (final event in events) ...[
-                        _SessionDetailsCard(
-                          court: court,
+                        _SessionListTile(
                           event: event,
-                          onJoinLobby: () => onJoinLobby(event),
+                          onSelect: () => onSelectSession(event),
                         ),
                         if (event != events.last) const SizedBox(height: 12),
                       ],
@@ -871,6 +1266,103 @@ class _EventDiscoveryPanel extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SessionListTile extends StatelessWidget {
+  const _SessionListTile({required this.event, required this.onSelect});
+
+  final EventSummary event;
+  final VoidCallback onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _chalk,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _courtGreen,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.event_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_formatTimeRange(event.startAt, event.endAt)} - ${_eventTypeLabel(event.eventType)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _muted, fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          IconButton.filledTonal(
+            onPressed: onSelect,
+            tooltip: 'View session',
+            icon: const Icon(Icons.arrow_forward_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionDetailsPage extends StatelessWidget {
+  const _SessionDetailsPage({
+    required this.court,
+    required this.event,
+    required this.onBack,
+    required this.onJoinLobby,
+  });
+
+  final CourtSummary court;
+  final EventSummary event;
+  final VoidCallback onBack;
+  final VoidCallback onJoinLobby;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _PageHeader(
+          title: 'Session details',
+          detail: 'Confirm the session, then check in when you are at court.',
+          icon: Icons.fact_check_rounded,
+          onBack: onBack,
+        ),
+        const SizedBox(height: 16),
+        _SessionDetailsCard(
+          court: court,
+          event: event,
+          onJoinLobby: onJoinLobby,
         ),
       ],
     );
@@ -1052,37 +1544,58 @@ class _SessionBanner extends StatelessWidget {
   }
 }
 
-class _CheckedInSessionPanel extends StatelessWidget {
-  const _CheckedInSessionPanel({
+class _MySessionPage extends StatelessWidget {
+  const _MySessionPage({
     required this.court,
     required this.session,
     required this.registration,
-    required this.matchFinished,
-    required this.onMatchFinished,
+    required this.onShowUpcomingMatch,
+    required this.onLeaveCourt,
   });
 
   final CourtSummary court;
   final EventSummary session;
   final EventRegistrationSummary? registration;
-  final bool matchFinished;
-  final VoidCallback onMatchFinished;
+  final VoidCallback onShowUpcomingMatch;
+  final VoidCallback onLeaveCourt;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        _PageHeader(
+          title: 'My session',
+          detail:
+              'You are checked in. Stay here for queue status and your next match assignment.',
+          icon: Icons.notifications_active_rounded,
+        ),
+        const SizedBox(height: 16),
         _MySessionCard(
           court: court,
           session: session,
           registration: registration,
         ),
         const SizedBox(height: 16),
-        _UpcomingMatchCard(court: court),
-        const SizedBox(height: 16),
-        _MatchResultCard(
-          court: court,
-          matchFinished: matchFinished,
-          onMatchFinished: onMatchFinished,
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onLeaveCourt,
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: const Text('Leave court'),
+                style: _dangerOutlineButtonStyle(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: onShowUpcomingMatch,
+                icon: const Icon(Icons.sports_score_rounded, size: 18),
+                label: const Text('View match'),
+                style: _primaryButtonStyle(),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1280,10 +1793,52 @@ class _SessionStep extends StatelessWidget {
   }
 }
 
-class _UpcomingMatchCard extends StatelessWidget {
-  const _UpcomingMatchCard({required this.court});
+class _UpcomingMatchPage extends StatelessWidget {
+  const _UpcomingMatchPage({
+    required this.court,
+    required this.onBack,
+    required this.onGoToCourt,
+    required this.onLeaveCourt,
+  });
 
   final CourtSummary court;
+  final VoidCallback onBack;
+  final VoidCallback onGoToCourt;
+  final VoidCallback onLeaveCourt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _PageHeader(
+          title: 'Upcoming match',
+          detail:
+              'This page gets full focus so the player can quickly see the court, teams, and next action.',
+          icon: Icons.sports_score_rounded,
+          onBack: onBack,
+        ),
+        const SizedBox(height: 16),
+        _UpcomingMatchCard(court: court, onGoToCourt: onGoToCourt),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onLeaveCourt,
+            icon: const Icon(Icons.logout_rounded, size: 18),
+            label: const Text('Leave court'),
+            style: _dangerOutlineButtonStyle(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _UpcomingMatchCard extends StatelessWidget {
+  const _UpcomingMatchCard({required this.court, required this.onGoToCourt});
+
+  final CourtSummary court;
+  final VoidCallback onGoToCourt;
 
   @override
   Widget build(BuildContext context) {
@@ -1347,20 +1902,101 @@ class _UpcomingMatchCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: () {},
-              style: FilledButton.styleFrom(
-                backgroundColor: _freshGreen,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+              onPressed: onGoToCourt,
+              style: _primaryButtonStyle(),
               child: const Text('Go to court'),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ActiveMatchPage extends StatelessWidget {
+  const _ActiveMatchPage({
+    required this.court,
+    required this.onShowMatchResult,
+    required this.onLeaveCourt,
+  });
+
+  final CourtSummary court;
+  final VoidCallback onShowMatchResult;
+  final VoidCallback onLeaveCourt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _PageHeader(
+          title: 'Active match',
+          detail:
+              'The player has reached the court. Keep this page quiet while the match is in progress.',
+          icon: Icons.sports_tennis_rounded,
+        ),
+        const SizedBox(height: 16),
+        _Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SectionTitle(
+                icon: Icons.play_circle_fill_rounded,
+                title: 'Match in progress',
+              ),
+              const SizedBox(height: 14),
+              _StatusActionCard(
+                icon: Icons.location_on_rounded,
+                title: 'Match #102',
+                detail: '${court.name} - Team A vs Team B',
+                actionLabel: 'View result',
+                onPressed: onShowMatchResult,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onLeaveCourt,
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: const Text('Leave court'),
+                  style: _dangerOutlineButtonStyle(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MatchResultPage extends StatelessWidget {
+  const _MatchResultPage({
+    required this.court,
+    required this.matchFinished,
+    required this.onMatchFinished,
+  });
+
+  final CourtSummary court;
+  final bool matchFinished;
+  final VoidCallback onMatchFinished;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const _PageHeader(
+          title: 'Match result',
+          detail:
+              'Confirm that the game is done. The queue master handles verification before the player returns to queue.',
+          icon: Icons.task_alt_rounded,
+        ),
+        const SizedBox(height: 16),
+        _MatchResultCard(
+          court: court,
+          matchFinished: matchFinished,
+          onMatchFinished: onMatchFinished,
+        ),
+      ],
     );
   }
 }
@@ -1470,6 +2106,91 @@ class _MatchResultCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _WaitingVerificationPage extends StatelessWidget {
+  const _WaitingVerificationPage({
+    required this.court,
+    required this.onReturnToQueue,
+  });
+
+  final CourtSummary court;
+  final VoidCallback onReturnToQueue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _PageHeader(
+          title: 'Waiting for verification',
+          detail:
+              'Match #102 is marked finished. The queue master verifies the result before returning the player to the queue.',
+          icon: Icons.hourglass_top_rounded,
+        ),
+        const SizedBox(height: 16),
+        _Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SectionTitle(
+                icon: Icons.verified_rounded,
+                title: 'Queue master review',
+              ),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F6FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFD8E5FF)),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.pending_actions_rounded,
+                      color: _courtGreen,
+                      size: 34,
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Result is under review',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'After verification at ${court.name}, the queue list adjusts and the player is available for the next match.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 12.5,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: onReturnToQueue,
+                  icon: const Icon(Icons.replay_rounded, size: 18),
+                  label: const Text('Return to queue'),
+                  style: _primaryButtonStyle(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1664,6 +2385,24 @@ String _titleCase(String value) {
         return '${lower[0].toUpperCase()}${lower.substring(1)}';
       })
       .join(' ');
+}
+
+ButtonStyle _primaryButtonStyle() {
+  return FilledButton.styleFrom(
+    backgroundColor: _freshGreen,
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+  );
+}
+
+ButtonStyle _dangerOutlineButtonStyle() {
+  return OutlinedButton.styleFrom(
+    foregroundColor: const Color(0xFFD34343),
+    side: const BorderSide(color: Color(0xFFD34343)),
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+  );
 }
 
 class _CourtLoadingState extends StatelessWidget {

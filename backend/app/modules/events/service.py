@@ -22,24 +22,13 @@ class EventService:
         return event
 
     def create_event(self, payload: EventCreate, scope: TenantContext) -> Event:
-        tenant_id = payload.tenant_id or scope.tenant_id
-        if tenant_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="tenant_id is required in the payload or X-Tenant-ID header",
-            )
         if scope.court_id and str(payload.court_id) != scope.court_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Event court does not match request court scope",
             )
 
-        return self.repository.create(
-            Event(
-                tenant_id=UUID(str(tenant_id)),
-                **payload.model_dump(exclude={"tenant_id"}),
-            )
-        )
+        return self.repository.create(Event(**payload.model_dump()))
 
     def update_event(self, event_id: UUID, payload: EventUpdate, scope: TenantContext) -> Event:
         event = self.get_event(event_id, scope)

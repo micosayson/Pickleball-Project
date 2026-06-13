@@ -23,7 +23,7 @@ class EventBase(BaseModel):
 
 
 class EventCreate(EventBase):
-    tenant_id: UUID | None = None
+    pass
 
 
 class EventUpdate(BaseModel):
@@ -48,7 +48,6 @@ class EventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    tenant_id: UUID
     court_id: UUID
     name: str
     description: str | None = None

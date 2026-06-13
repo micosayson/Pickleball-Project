@@ -15,12 +15,6 @@ class Match(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "matches"
     __table_args__ = (UniqueConstraint("event_id", "match_number", name="uq_matches_event_match_number"),)
 
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
     court_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),
@@ -44,7 +38,6 @@ class Match(UUIDPrimaryKeyMixin, AuditMixin, Base):
     winner_team_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    court: Mapped["Court"] = relationship("Court")
     court: Mapped["Court"] = relationship("Court")
     event: Mapped["Event"] = relationship("Event", back_populates="matches")
     participants: Mapped[list["MatchParticipant"]] = relationship("MatchParticipant", back_populates="match")

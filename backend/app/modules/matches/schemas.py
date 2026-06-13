@@ -20,7 +20,7 @@ class MatchBase(BaseModel):
 
 
 class MatchCreate(MatchBase):
-    tenant_id: UUID | None = None
+    pass
 
 
 class MatchUpdate(BaseModel):
@@ -42,7 +42,6 @@ class MatchRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    tenant_id: UUID
     court_id: UUID
     event_id: UUID
     match_number: int

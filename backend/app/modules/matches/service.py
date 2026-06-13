@@ -29,23 +29,12 @@ class MatchService:
         return match
 
     def create_match(self, payload: MatchCreate, scope: TenantContext) -> Match:
-        tenant_id = payload.tenant_id or scope.tenant_id
-        if tenant_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="tenant_id is required in the payload or X-Tenant-ID header",
-            )
         if scope.court_id and str(payload.court_id) != scope.court_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Match court does not match request court scope",
             )
-        return self.repository.create(
-            Match(
-                tenant_id=UUID(str(tenant_id)),
-                **payload.model_dump(exclude={"tenant_id"}),
-            )
-        )
+        return self.repository.create(Match(**payload.model_dump()))
 
     def update_match(self, match_id: UUID, payload: MatchUpdate, scope: TenantContext) -> Match:
         match = self.get_match(match_id, scope)

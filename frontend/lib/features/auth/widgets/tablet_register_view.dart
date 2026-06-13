@@ -21,13 +21,16 @@ class TabletRegisterView extends StatelessWidget {
         // Centered Card
         Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 40.0,
+              vertical: 24.0,
+            ),
             child: Card(
               color: Colors.white,
               elevation: 12.0,
               shadowColor: Colors.black.withValues(alpha: 0.2),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(32.0),
+                borderRadius: BorderRadius.circular(8.0),
               ),
               child: Container(
                 width: 500.0,

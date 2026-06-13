@@ -15,7 +15,9 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.home});
+
+  final Widget? home;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +35,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF9FBF9),
         fontFamily: 'Inter',
       ),
-      home: const AuthGate(),
+      home: home ?? const AuthGate(),
     );
   }
 }

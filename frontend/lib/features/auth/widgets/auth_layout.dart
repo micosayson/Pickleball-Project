@@ -33,7 +33,9 @@ class AuthHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: isDesktop ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      crossAxisAlignment: isDesktop
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
       children: [
         if (!isDesktop) ...[
           Row(
@@ -58,7 +60,7 @@ class AuthHeader extends StatelessWidget {
                   color: Color(0xFF4F6F52),
                   fontSize: 24.0,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
+                  letterSpacing: 0,
                 ),
               ),
             ],
@@ -72,7 +74,7 @@ class AuthHeader extends StatelessWidget {
             color: const Color(0xFF4F6F52),
             fontSize: isDesktop ? 36.0 : 28.0,
             fontWeight: FontWeight.w900,
-            letterSpacing: -0.5,
+            letterSpacing: 0,
           ),
         ),
         const SizedBox(height: 6.0),
@@ -141,7 +143,11 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
             decoration: InputDecoration(
               hintText: 'name@example.com',
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
-              prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF739072), size: 20.0),
+              prefixIcon: const Icon(
+                Icons.email_outlined,
+                color: Color(0xFF739072),
+                size: 20.0,
+              ),
               filled: true,
               fillColor: const Color(0xFFF2F5F2),
               border: OutlineInputBorder(
@@ -174,22 +180,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Forgot Password clicked')),
-                  );
-                },
-                child: const Text(
-                  'Forgot Password?',
-                  style: TextStyle(
-                    color: Color(0xFF4F6F52),
-                    fontSize: 13.0,
-                    fontWeight: FontWeight.w700,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
+              const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 8.0),
@@ -198,12 +189,18 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,
             decoration: InputDecoration(
-              hintText: '••••••••••••',
+              hintText: 'Enter password',
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
-              prefixIcon: const Icon(Icons.lock_outlined, color: Color(0xFF739072), size: 20.0),
+              prefixIcon: const Icon(
+                Icons.lock_outlined,
+                color: Color(0xFF739072),
+                size: 20.0,
+              ),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                   color: const Color(0xFF739072),
                   size: 20.0,
                 ),
@@ -247,7 +244,9 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                             password: _passwordController.text,
                           );
                           if (!context.mounted) return;
-                          debugPrint('Login completed. session=${response.session != null}');
+                          debugPrint(
+                            'Login completed. session=${response.session != null}',
+                          );
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(
                               builder: (_) => const HomePlaceholderPage(),
@@ -262,9 +261,12 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                               backgroundColor: Colors.redAccent,
                             ),
                           );
-                          if (e.message.contains('Too Many Requests') || e.message.contains('429')) {
+                          if (e.message.contains('Too Many Requests') ||
+                              e.message.contains('429')) {
                             setState(() {
-                              _retryAfter = DateTime.now().add(const Duration(seconds: 30));
+                              _retryAfter = DateTime.now().add(
+                                const Duration(seconds: 30),
+                              );
                             });
                           }
                         } catch (e) {
@@ -300,7 +302,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                       ),
                     )
                   : const Text(
-                      'Login',
+                      'Log in',
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
@@ -390,7 +392,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             decoration: InputDecoration(
               hintText: 'John Doe',
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
-              prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF739072), size: 20.0),
+              prefixIcon: const Icon(
+                Icons.person_outline,
+                color: Color(0xFF739072),
+                size: 20.0,
+              ),
               filled: true,
               fillColor: const Color(0xFFF2F5F2),
               border: OutlineInputBorder(
@@ -425,7 +431,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             decoration: InputDecoration(
               hintText: 'name@example.com',
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
-              prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF739072), size: 20.0),
+              prefixIcon: const Icon(
+                Icons.email_outlined,
+                color: Color(0xFF739072),
+                size: 20.0,
+              ),
               filled: true,
               fillColor: const Color(0xFFF2F5F2),
               border: OutlineInputBorder(
@@ -461,12 +471,18 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
-              hintText: '••••••••••••',
+              hintText: 'Enter password',
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
-              prefixIcon: const Icon(Icons.lock_outlined, color: Color(0xFF739072), size: 20.0),
+              prefixIcon: const Icon(
+                Icons.lock_outlined,
+                color: Color(0xFF739072),
+                size: 20.0,
+              ),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                   color: const Color(0xFF739072),
                   size: 20.0,
                 ),
@@ -511,12 +527,18 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             obscureText: _obscureConfirmPassword,
             textInputAction: TextInputAction.done,
             decoration: InputDecoration(
-              hintText: '••••••••••••',
+              hintText: 'Confirm password',
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
-              prefixIcon: const Icon(Icons.lock_outlined, color: Color(0xFF739072), size: 20.0),
+              prefixIcon: const Icon(
+                Icons.lock_outlined,
+                color: Color(0xFF739072),
+                size: 20.0,
+              ),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  _obscureConfirmPassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                   color: const Color(0xFF739072),
                   size: 20.0,
                 ),
@@ -561,7 +583,9 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                             fullName: _nameController.text.trim(),
                           );
                           if (!context.mounted) return;
-                          debugPrint('Signup completed. session=${response.session != null}');
+                          debugPrint(
+                            'Signup completed. session=${response.session != null}',
+                          );
                           if (response.session != null) {
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(
@@ -594,9 +618,12 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                               backgroundColor: Colors.redAccent,
                             ),
                           );
-                          if (e.message.contains('Too Many Requests') || e.message.contains('429')) {
+                          if (e.message.contains('Too Many Requests') ||
+                              e.message.contains('429')) {
                             setState(() {
-                              _retryAfter = DateTime.now().add(const Duration(seconds: 30));
+                              _retryAfter = DateTime.now().add(
+                                const Duration(seconds: 30),
+                              );
                             });
                           }
                         } catch (e) {
@@ -632,7 +659,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                       ),
                     )
                   : const Text(
-                      'Register',
+                      'Create account',
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
@@ -671,93 +698,35 @@ class SocialLogins extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: Divider(color: const Color(0xFF739072).withValues(alpha: 0.25))),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                'or continue with',
-                style: TextStyle(
-                  color: const Color(0xFF739072).withValues(alpha: 0.6),
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Expanded(child: Divider(color: const Color(0xFF739072).withValues(alpha: 0.25))),
-          ],
+    return Container(
+      padding: const EdgeInsets.all(14.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F5F2),
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(
+          color: const Color(0xFF739072).withValues(alpha: 0.2),
         ),
-        const SizedBox(height: 20.0),
-        // Google Button
-        OutlinedButton(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: const Color(0xFF739072).withValues(alpha: 0.25)),
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.0),
-            ),
+      ),
+      child: const Row(
+        children: [
+          Icon(
+            Icons.lock_outline_rounded,
+            color: Color(0xFF4F6F52),
+            size: 20.0,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.network(
-                'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/480px-Google_%22G%22_logo.svg.png',
-                height: 20.0,
-                width: 20.0,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.g_mobiledata_rounded,
-                  size: 24.0,
-                  color: Colors.red,
-                ),
-              ),
-              const SizedBox(width: 12.0),
-              const Text(
-                'Continue with Google',
-                style: TextStyle(
-                  color: Color(0xFF4F6F52),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15.0,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12.0),
-        // Apple Button
-        OutlinedButton(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: const Color(0xFF739072).withValues(alpha: 0.25)),
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.0),
-            ),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.apple,
+          SizedBox(width: 10.0),
+          Expanded(
+            child: Text(
+              'Secure email sign-in with Supabase Auth',
+              style: TextStyle(
                 color: Color(0xFF4F6F52),
-                size: 22.0,
+                fontSize: 13.0,
+                fontWeight: FontWeight.w700,
               ),
-              SizedBox(width: 12.0),
-              Text(
-                'Continue with Apple',
-                style: TextStyle(
-                  color: Color(0xFF4F6F52),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15.0,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -786,7 +755,7 @@ class AuthRegisterFooter extends StatelessWidget {
             );
           },
           child: const Text(
-            'Register Here',
+            'Create account',
             style: TextStyle(
               color: Color(0xFF4F6F52),
               fontWeight: FontWeight.w700,

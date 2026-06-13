@@ -6,8 +6,14 @@ import '../../../core/network/api_endpoints.dart';
 import '../../auth/pages/login_page.dart';
 import '../../auth/services/auth_service.dart';
 
-/// Temporary placeholder shown after a successful login.
-/// Includes a small API tester so you can verify backend GET/POST/PATCH calls.
+const _courtGreen = Color(0xFF315C3A);
+const _freshGreen = Color(0xFF78A85A);
+const _clay = Color(0xFFD37A46);
+const _ink = Color(0xFF17221B);
+const _muted = Color(0xFF6A7A70);
+const _chalk = Color(0xFFF7FAF5);
+const _line = Color(0xFFE1E9DE);
+
 class HomePlaceholderPage extends StatefulWidget {
   const HomePlaceholderPage({super.key});
 
@@ -16,10 +22,13 @@ class HomePlaceholderPage extends StatefulWidget {
 }
 
 class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
-  String _lastResult = 'Press a test button to hit the backend.';
+  String _lastResult = 'Backend checks have not run yet.';
   bool _isLoading = false;
 
-  Future<void> _runRequest(Future<dynamic> Function() request, String label) async {
+  Future<void> _runRequest(
+    Future<dynamic> Function() request,
+    String label,
+  ) async {
     setState(() {
       _isLoading = true;
       _lastResult = 'Running $label...';
@@ -50,187 +59,645 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     final email = user?.email ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FBF9),
+      backgroundColor: _chalk,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 80.0,
-                    height: 80.0,
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(79, 111, 82, 0.1),
-                      shape: BoxShape.circle,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 900;
+            return CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      isWide ? 40 : 20,
+                      18,
+                      isWide ? 40 : 20,
+                      18,
                     ),
-                    child: const Icon(
-                      Icons.sports_tennis_rounded,
-                      color: Color(0xFF4F6F52),
-                      size: 40.0,
-                    ),
-                  ),
-                  const SizedBox(height: 24.0),
-                  Text(
-                    'Welcome, $fullName!',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFF4F6F52),
-                      fontSize: 28.0,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8.0),
-                  Text(
-                    email,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFF739072),
-                      fontSize: 15.0,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 12.0),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(168, 198, 134, 0.2),
-                      borderRadius: BorderRadius.circular(20.0),
-                      border: Border.all(
-                        color: const Color.fromRGBO(168, 198, 134, 0.5),
-                      ),
-                    ),
-                    child: const Text(
-                      'Home screen coming soon',
-                      style: TextStyle(
-                        color: Color(0xFF4F6F52),
-                        fontSize: 13.0,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28.0),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 520),
-                    child: Card(
-                      elevation: 0,
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              'Backend API Tester',
-                              style: TextStyle(
-                                color: Color(0xFF4F6F52),
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 8.0),
-                            const Text(
-                              'Use these buttons to confirm GET, POST, and PATCH requests hit FastAPI.',
-                              style: TextStyle(
-                                color: Color(0xFF739072),
-                                fontSize: 13.0,
-                              ),
-                            ),
-                            const SizedBox(height: 16.0),
-                            Wrap(
-                              spacing: 12.0,
-                              runSpacing: 12.0,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : () => _runRequest(
-                                            () => ApiClient.instance.get(ApiEndpoints.authMe),
-                                            'GET /auth/me',
-                                          ),
-                                  child: const Text('GET /auth/me'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : () => _runRequest(
-                                            () => ApiClient.instance.post(
-                                              ApiEndpoints.userSync,
-                                              data: {
-                                                'full_name': fullName,
-                                                'avatar_url': user?.userMetadata?['avatar_url'],
-                                              },
-                                            ),
-                                            'POST /users/sync',
-                                          ),
-                                  child: const Text('POST /users/sync'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : () => _runRequest(
-                                            () => ApiClient.instance.patch(
-                                              ApiEndpoints.usersMe,
-                                              data: {'full_name': '$fullName Updated'},
-                                            ),
-                                            'PATCH /users/me',
-                                          ),
-                                  child: const Text('PATCH /users/me'),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16.0),
-                            Text(
-                              _lastResult,
-                              style: const TextStyle(
-                                color: Color(0xFF4F6F52),
-                                fontSize: 13.0,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 40.0),
-                  SizedBox(
-                    width: 200.0,
-                    height: 50.0,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
+                    child: _HomeHeader(
+                      fullName: fullName,
+                      email: email,
+                      onSignOut: () async {
                         await AuthService().signOut();
                         if (context.mounted) {
                           Navigator.pushAndRemoveUntil(
                             context,
-                            MaterialPageRoute(builder: (_) => const LoginPage()),
+                            MaterialPageRoute(
+                              builder: (_) => const LoginPage(),
+                            ),
                             (route) => false,
                           );
                         }
                       },
-                      icon: const Icon(Icons.logout_rounded, size: 18.0),
-                      label: const Text(
-                        'Sign Out',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF4F6F52),
-                        side: const BorderSide(color: Color(0xFF4F6F52), width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14.0),
-                        ),
-                      ),
                     ),
                   ),
-                ],
+                ),
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    isWide ? 40 : 20,
+                    0,
+                    isWide ? 40 : 20,
+                    28,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1120),
+                      child: isWide
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 7,
+                                  child: _MainColumn(
+                                    isLoading: _isLoading,
+                                    lastResult: _lastResult,
+                                    fullName: fullName,
+                                    user: user,
+                                    runRequest: _runRequest,
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                const Expanded(flex: 4, child: _SideColumn()),
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                _MainColumn(
+                                  isLoading: _isLoading,
+                                  lastResult: _lastResult,
+                                  fullName: fullName,
+                                  user: user,
+                                  runRequest: _runRequest,
+                                ),
+                                const SizedBox(height: 16),
+                                const _SideColumn(),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.fullName,
+    required this.email,
+    required this.onSignOut,
+  });
+
+  final String fullName;
+  final String email;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 1120),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: _courtGreen,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.sports_tennis_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Plaqora',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: _ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  email.isEmpty ? fullName : email,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _muted, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          IconButton.filledTonal(
+            onPressed: onSignOut,
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MainColumn extends StatelessWidget {
+  const _MainColumn({
+    required this.isLoading,
+    required this.lastResult,
+    required this.fullName,
+    required this.user,
+    required this.runRequest,
+  });
+
+  final bool isLoading;
+  final String lastResult;
+  final String fullName;
+  final User? user;
+  final Future<void> Function(Future<dynamic> Function(), String) runRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _HeroPanel(fullName: fullName),
+        const SizedBox(height: 16),
+        const _QuickActions(),
+        const SizedBox(height: 16),
+        _DeveloperChecks(
+          isLoading: isLoading,
+          lastResult: lastResult,
+          fullName: fullName,
+          user: user,
+          runRequest: runRequest,
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroPanel extends StatelessWidget {
+  const _HeroPanel({required this.fullName});
+
+  final String fullName;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      color: _courtGreen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(99),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            ),
+            child: const Text(
+              'Player hub',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
-        ),
+          const SizedBox(height: 18),
+          Text(
+            'Ready for the next rally, $fullName?',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              height: 1.08,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Find open play, track competitive results, and keep your profile synced with the backend.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.82),
+              fontSize: 15,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 22),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: const [
+              _MetricTile(label: 'Rating', value: '3.50'),
+              _MetricTile(label: 'Events', value: '0'),
+              _MetricTile(label: 'Matches', value: '0'),
+            ],
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 104,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions();
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: MediaQuery.sizeOf(context).width >= 620 ? 3 : 1,
+      childAspectRatio: MediaQuery.sizeOf(context).width >= 620 ? 1.25 : 4.2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: const [
+        _ActionTile(
+          icon: Icons.map_rounded,
+          title: 'Discover courts',
+          detail: 'Find places to play nearby.',
+        ),
+        _ActionTile(
+          icon: Icons.event_available_rounded,
+          title: 'Join events',
+          detail: 'Open play and competitive sessions.',
+        ),
+        _ActionTile(
+          icon: Icons.leaderboard_rounded,
+          title: 'Track ratings',
+          detail: 'Match results drive rankings.',
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _freshGreen.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: _courtGreen, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  detail,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12.5,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SideColumn extends StatelessWidget {
+  const _SideColumn();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        _NextMatchCard(),
+        SizedBox(height: 16),
+        _ReadinessCard(),
+      ],
+    );
+  }
+}
+
+class _NextMatchCard extends StatelessWidget {
+  const _NextMatchCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(icon: Icons.schedule_rounded, title: 'Next up'),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _clay.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _clay.withValues(alpha: 0.22)),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Thursday Competitive Play',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Seed data event used for backend verification.',
+                  style: TextStyle(color: _muted, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadinessCard extends StatelessWidget {
+  const _ReadinessCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          _SectionTitle(
+            icon: Icons.check_circle_rounded,
+            title: 'Build readiness',
+          ),
+          SizedBox(height: 14),
+          _ReadinessRow(text: 'Supabase Auth connected'),
+          _ReadinessRow(text: 'FastAPI profile sync available'),
+          _ReadinessRow(text: 'Tenant and RLS work still pending'),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadinessRow extends StatelessWidget {
+  const _ReadinessRow({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.done_rounded, color: _freshGreen, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(color: _muted, fontSize: 13.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeveloperChecks extends StatelessWidget {
+  const _DeveloperChecks({
+    required this.isLoading,
+    required this.lastResult,
+    required this.fullName,
+    required this.user,
+    required this.runRequest,
+  });
+
+  final bool isLoading;
+  final String lastResult;
+  final String fullName;
+  final User? user;
+  final Future<void> Function(Future<dynamic> Function(), String) runRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(icon: Icons.api_rounded, title: 'Backend checks'),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _CheckButton(
+                label: 'Auth',
+                icon: Icons.verified_user_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.get(ApiEndpoints.authMe),
+                  'GET /auth/me',
+                ),
+              ),
+              _CheckButton(
+                label: 'Sync profile',
+                icon: Icons.sync_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.post(
+                    ApiEndpoints.userSync,
+                    data: {
+                      'full_name': fullName,
+                      'avatar_url': user?.userMetadata?['avatar_url'],
+                    },
+                  ),
+                  'POST /users/sync',
+                ),
+              ),
+              _CheckButton(
+                label: 'Update name',
+                icon: Icons.edit_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.patch(
+                    ApiEndpoints.usersMe,
+                    data: {'full_name': '$fullName Updated'},
+                  ),
+                  'PATCH /users/me',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _chalk,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _line),
+            ),
+            child: Text(
+              lastResult,
+              style: const TextStyle(
+                color: _muted,
+                fontSize: 12.5,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CheckButton extends StatelessWidget {
+  const _CheckButton({
+    required this.label,
+    required this.icon,
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: isLoading ? null : onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: FilledButton.styleFrom(
+        backgroundColor: _ink,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.icon, required this.title});
+
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: _courtGreen, size: 20),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Panel extends StatelessWidget {
+  const _Panel({required this.child, this.color = Colors.white});
+
+  final Widget child;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+        border: color == Colors.white ? Border.all(color: _line) : null,
+      ),
+      child: child,
     );
   }
 }

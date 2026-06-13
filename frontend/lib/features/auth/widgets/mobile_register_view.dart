@@ -7,7 +7,9 @@ class MobileRegisterView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final topImageHeight = size.height * 0.25; // slightly smaller top section to accommodate more fields
+    final topImageHeight =
+        size.height *
+        0.25; // slightly smaller top section to accommodate more fields
 
     return SingleChildScrollView(
       child: Column(
@@ -27,10 +29,7 @@ class MobileRegisterView extends StatelessWidget {
                 height: topImageHeight,
                 color: Colors.black.withValues(alpha: 0.4),
               ),
-              Container(
-                height: topImageHeight,
-                color: const Color(0x504F6F52),
-              ),
+              Container(height: topImageHeight, color: const Color(0x504F6F52)),
               // App logo overlay
               Positioned(
                 top: 48.0,
@@ -56,7 +55,7 @@ class MobileRegisterView extends StatelessWidget {
                         color: Colors.white,
                         fontSize: 22.0,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                        letterSpacing: 0,
                       ),
                     ),
                   ],
@@ -71,8 +70,8 @@ class MobileRegisterView extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(32.0),
-                  topRight: Radius.circular(32.0),
+                  topLeft: Radius.circular(24.0),
+                  topRight: Radius.circular(24.0),
                 ),
               ),
               child: const Padding(

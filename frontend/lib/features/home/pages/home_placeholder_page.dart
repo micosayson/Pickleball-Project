@@ -27,8 +27,9 @@ class HomePlaceholderPage extends StatefulWidget {
 
 class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   late final Future<List<CourtSummary>> _courtsFuture;
-  late final Future<List<EventSummary>> _eventsFuture;
   late final Future<List<ScoreSubmissionSummary>> _scoresFuture;
+  CourtSummary? _selectedCourt;
+  Future<List<EventSummary>>? _courtEventsFuture;
   String _lastResult = 'Backend checks have not run yet.';
   bool _isLoading = false;
   int _selectedIndex = 0;
@@ -37,7 +38,6 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   void initState() {
     super.initState();
     _courtsFuture = const CourtService().listCourts();
-    _eventsFuture = const EventService().listEvents();
     _scoresFuture = const ScoreSubmissionService().listRecent();
   }
 
@@ -85,7 +85,8 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
               0 => _PlayTab(
                 isWide: isWide,
                 fullName: fullName,
-                eventsFuture: _eventsFuture,
+                selectedCourt: _selectedCourt,
+                courtEventsFuture: _courtEventsFuture,
                 scoresFuture: _scoresFuture,
                 joinLobby: _joinLobby,
                 onOpenCourts: () => setState(() => _selectedIndex = 1),
@@ -188,10 +189,22 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   }
 
   Future<void> _selectCourt(CourtSummary court) {
-    return _runRequest(
-      () => const CourtMembershipService().joinCourt(court.id),
-      'Court selected',
-    );
+    return _runRequest(() async {
+      final selection = await const CourtMembershipService().joinCourt(
+        court.id,
+      );
+      if (mounted) {
+        setState(() {
+          _selectedCourt = court;
+          _courtEventsFuture = const EventService().listEvents(
+            limit: 12,
+            courtId: court.id,
+          );
+          _selectedIndex = 0;
+        });
+      }
+      return selection;
+    }, 'Court selected');
   }
 }
 
@@ -199,7 +212,8 @@ class _PlayTab extends StatelessWidget {
   const _PlayTab({
     required this.isWide,
     required this.fullName,
-    required this.eventsFuture,
+    required this.selectedCourt,
+    required this.courtEventsFuture,
     required this.scoresFuture,
     required this.joinLobby,
     required this.onOpenCourts,
@@ -208,7 +222,8 @@ class _PlayTab extends StatelessWidget {
 
   final bool isWide;
   final String fullName;
-  final Future<List<EventSummary>> eventsFuture;
+  final CourtSummary? selectedCourt;
+  final Future<List<EventSummary>>? courtEventsFuture;
   final Future<List<ScoreSubmissionSummary>> scoresFuture;
   final Future<void> Function(EventSummary) joinLobby;
   final VoidCallback onOpenCourts;
@@ -224,7 +239,8 @@ class _PlayTab extends StatelessWidget {
             flex: 7,
             child: _MainColumn(
               fullName: fullName,
-              eventsFuture: eventsFuture,
+              selectedCourt: selectedCourt,
+              courtEventsFuture: courtEventsFuture,
               scoresFuture: scoresFuture,
               joinLobby: joinLobby,
               onOpenCourts: onOpenCourts,
@@ -241,7 +257,8 @@ class _PlayTab extends StatelessWidget {
       children: [
         _MainColumn(
           fullName: fullName,
-          eventsFuture: eventsFuture,
+          selectedCourt: selectedCourt,
+          courtEventsFuture: courtEventsFuture,
           scoresFuture: scoresFuture,
           joinLobby: joinLobby,
           onOpenCourts: onOpenCourts,
@@ -508,7 +525,8 @@ class _HomeHeader extends StatelessWidget {
 class _MainColumn extends StatelessWidget {
   const _MainColumn({
     required this.fullName,
-    required this.eventsFuture,
+    required this.selectedCourt,
+    required this.courtEventsFuture,
     required this.scoresFuture,
     required this.joinLobby,
     required this.onOpenCourts,
@@ -516,7 +534,8 @@ class _MainColumn extends StatelessWidget {
   });
 
   final String fullName;
-  final Future<List<EventSummary>> eventsFuture;
+  final CourtSummary? selectedCourt;
+  final Future<List<EventSummary>>? courtEventsFuture;
   final Future<List<ScoreSubmissionSummary>> scoresFuture;
   final Future<void> Function(EventSummary) joinLobby;
   final VoidCallback onOpenCourts;
@@ -530,10 +549,14 @@ class _MainColumn extends StatelessWidget {
         const SizedBox(height: 16),
         const _CourtDataStrip(),
         const SizedBox(height: 16),
-        _EventDiscoveryPanel(
-          eventsFuture: eventsFuture,
-          onJoinLobby: joinLobby,
-        ),
+        if (selectedCourt == null || courtEventsFuture == null)
+          _SelectCourtFirstPanel(onOpenCourts: onOpenCourts)
+        else
+          _EventDiscoveryPanel(
+            court: selectedCourt!,
+            eventsFuture: courtEventsFuture!,
+            onJoinLobby: joinLobby,
+          ),
         const SizedBox(height: 16),
         _RecentScoresPanel(scoresFuture: scoresFuture),
         const SizedBox(height: 16),
@@ -674,8 +697,8 @@ class _QuickActions extends StatelessWidget {
         ),
         const _ActionTile(
           icon: Icons.event_available_rounded,
-          title: 'Join events',
-          detail: 'Open play and competitive sessions.',
+          title: 'Court lobby',
+          detail: 'Select a court to see sessions.',
         ),
         _ActionTile(
           icon: Icons.person_rounded,
@@ -829,12 +852,56 @@ class _CourtTile extends StatelessWidget {
   }
 }
 
+class _SelectCourtFirstPanel extends StatelessWidget {
+  const _SelectCourtFirstPanel({required this.onOpenCourts});
+
+  final VoidCallback onOpenCourts;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.location_on_rounded,
+            title: 'Court lobby',
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Select a court before joining a session lobby.',
+            style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
+          ),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.icon(
+              onPressed: onOpenCourts,
+              icon: const Icon(Icons.map_rounded, size: 18),
+              label: const Text('Choose court'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _ink,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EventDiscoveryPanel extends StatelessWidget {
   const _EventDiscoveryPanel({
+    required this.court,
     required this.eventsFuture,
     required this.onJoinLobby,
   });
 
+  final CourtSummary court;
   final Future<List<EventSummary>> eventsFuture;
   final Future<void> Function(EventSummary) onJoinLobby;
 
@@ -844,13 +911,13 @@ class _EventDiscoveryPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionTitle(
+          _SectionTitle(
             icon: Icons.event_available_rounded,
-            title: 'Open events',
+            title: '${court.name} lobby',
           ),
           const SizedBox(height: 6),
           const Text(
-            'Join the lobby to confirm you are at the court and ready for upcoming matches.',
+            'Join a session lobby to confirm you are at this court and ready for upcoming matches.',
             style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
           ),
           const SizedBox(height: 14),
@@ -873,8 +940,8 @@ class _EventDiscoveryPanel extends StatelessWidget {
               if (events.isEmpty) {
                 return const _CourtMessageState(
                   icon: Icons.event_busy_rounded,
-                  title: 'No events published yet',
-                  detail: 'Published sessions will appear here.',
+                  title: 'No sessions for this court',
+                  detail: 'Court sessions will appear here when available.',
                   color: _courtGreen,
                 );
               }
@@ -946,7 +1013,7 @@ class _EventTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$timeLabel · $typeLabel',
+                  '$timeLabel - $typeLabel',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: _muted, fontSize: 12.5),

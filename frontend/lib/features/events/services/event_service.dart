@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 
@@ -74,10 +76,16 @@ class EventRegistrationSummary {
 class EventService {
   const EventService();
 
-  Future<List<EventSummary>> listEvents({int limit = 3}) async {
+  Future<List<EventSummary>> listEvents({
+    int limit = 3,
+    String? courtId,
+  }) async {
     final response = await ApiClient.instance.get<List<dynamic>>(
       ApiEndpoints.events,
       queryParameters: {'limit': limit},
+      options: courtId == null
+          ? null
+          : Options(headers: {'X-Court-ID': courtId}),
     );
     final data = response.data ?? [];
     return data

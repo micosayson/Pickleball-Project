@@ -8,7 +8,6 @@ import '../../auth/pages/login_page.dart';
 import '../../auth/services/auth_service.dart';
 import '../../courts/services/court_service.dart';
 import '../../events/services/event_service.dart';
-import '../../scores/services/score_submission_service.dart';
 
 const _courtGreen = Color(0xFF315C3A);
 const _freshGreen = Color(0xFF78A85A);
@@ -27,7 +26,6 @@ class HomePlaceholderPage extends StatefulWidget {
 
 class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   late final Future<List<CourtSummary>> _courtsFuture;
-  late final Future<List<ScoreSubmissionSummary>> _scoresFuture;
   CourtSummary? _selectedCourt;
   Future<List<EventSummary>>? _courtEventsFuture;
   String _lastResult = 'Backend checks have not run yet.';
@@ -38,7 +36,6 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   void initState() {
     super.initState();
     _courtsFuture = const CourtService().listCourts();
-    _scoresFuture = const ScoreSubmissionService().listRecent();
   }
 
   Future<void> _runRequest(
@@ -83,14 +80,11 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
             final isWide = constraints.maxWidth >= 900;
             final content = switch (_selectedIndex) {
               0 => _PlayTab(
-                isWide: isWide,
                 fullName: fullName,
                 selectedCourt: _selectedCourt,
                 courtEventsFuture: _courtEventsFuture,
-                scoresFuture: _scoresFuture,
                 joinLobby: _joinLobby,
                 onOpenCourts: () => setState(() => _selectedIndex = 1),
-                onOpenProfile: () => setState(() => _selectedIndex = 2),
               ),
               1 => _CourtsTab(
                 courtsFuture: _courtsFuture,
@@ -210,63 +204,27 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
 
 class _PlayTab extends StatelessWidget {
   const _PlayTab({
-    required this.isWide,
     required this.fullName,
     required this.selectedCourt,
     required this.courtEventsFuture,
-    required this.scoresFuture,
     required this.joinLobby,
     required this.onOpenCourts,
-    required this.onOpenProfile,
   });
 
-  final bool isWide;
   final String fullName;
   final CourtSummary? selectedCourt;
   final Future<List<EventSummary>>? courtEventsFuture;
-  final Future<List<ScoreSubmissionSummary>> scoresFuture;
   final Future<void> Function(EventSummary) joinLobby;
   final VoidCallback onOpenCourts;
-  final VoidCallback onOpenProfile;
 
   @override
   Widget build(BuildContext context) {
-    if (isWide) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 7,
-            child: _MainColumn(
-              fullName: fullName,
-              selectedCourt: selectedCourt,
-              courtEventsFuture: courtEventsFuture,
-              scoresFuture: scoresFuture,
-              joinLobby: joinLobby,
-              onOpenCourts: onOpenCourts,
-              onOpenProfile: onOpenProfile,
-            ),
-          ),
-          const SizedBox(width: 20),
-          const Expanded(flex: 4, child: _NextMatchCard()),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        _MainColumn(
-          fullName: fullName,
-          selectedCourt: selectedCourt,
-          courtEventsFuture: courtEventsFuture,
-          scoresFuture: scoresFuture,
-          joinLobby: joinLobby,
-          onOpenCourts: onOpenCourts,
-          onOpenProfile: onOpenProfile,
-        ),
-        const SizedBox(height: 16),
-        const _NextMatchCard(),
-      ],
+    return _MainColumn(
+      fullName: fullName,
+      selectedCourt: selectedCourt,
+      courtEventsFuture: courtEventsFuture,
+      joinLobby: joinLobby,
+      onOpenCourts: onOpenCourts,
     );
   }
 }
@@ -527,27 +485,21 @@ class _MainColumn extends StatelessWidget {
     required this.fullName,
     required this.selectedCourt,
     required this.courtEventsFuture,
-    required this.scoresFuture,
     required this.joinLobby,
     required this.onOpenCourts,
-    required this.onOpenProfile,
   });
 
   final String fullName;
   final CourtSummary? selectedCourt;
   final Future<List<EventSummary>>? courtEventsFuture;
-  final Future<List<ScoreSubmissionSummary>> scoresFuture;
   final Future<void> Function(EventSummary) joinLobby;
   final VoidCallback onOpenCourts;
-  final VoidCallback onOpenProfile;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         _HeroPanel(fullName: fullName),
-        const SizedBox(height: 16),
-        const _CourtDataStrip(),
         const SizedBox(height: 16),
         if (selectedCourt == null || courtEventsFuture == null)
           _SelectCourtFirstPanel(onOpenCourts: onOpenCourts)
@@ -557,10 +509,6 @@ class _MainColumn extends StatelessWidget {
             eventsFuture: courtEventsFuture!,
             onJoinLobby: joinLobby,
           ),
-        const SizedBox(height: 16),
-        _RecentScoresPanel(scoresFuture: scoresFuture),
-        const SizedBox(height: 16),
-        _QuickActions(onOpenCourts: onOpenCourts, onOpenProfile: onOpenProfile),
       ],
     );
   }
@@ -605,108 +553,15 @@ class _HeroPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Find open play, track competitive results, and keep your profile synced with the backend.',
+            'Select a court, join its lobby, and wait for your upcoming match.',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.82),
               fontSize: 15,
               height: 1.45,
             ),
           ),
-          const SizedBox(height: 22),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: const [
-              _MetricTile(label: 'Rating', value: '3.50'),
-              _MetricTile(label: 'Events', value: '0'),
-              _MetricTile(label: 'Matches', value: '0'),
-            ],
-          ),
         ],
       ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  const _MetricTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 104,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActions extends StatelessWidget {
-  const _QuickActions({
-    required this.onOpenCourts,
-    required this.onOpenProfile,
-  });
-
-  final VoidCallback onOpenCourts;
-  final VoidCallback onOpenProfile;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: MediaQuery.sizeOf(context).width >= 620 ? 3 : 1,
-      childAspectRatio: MediaQuery.sizeOf(context).width >= 620 ? 1.25 : 4.2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [
-        _ActionTile(
-          icon: Icons.map_rounded,
-          title: 'Discover courts',
-          detail: 'Find places to play nearby.',
-          onTap: onOpenCourts,
-        ),
-        const _ActionTile(
-          icon: Icons.event_available_rounded,
-          title: 'Court lobby',
-          detail: 'Select a court to see sessions.',
-        ),
-        _ActionTile(
-          icon: Icons.person_rounded,
-          title: 'Player profile',
-          detail: 'Review account and player status.',
-          onTap: onOpenProfile,
-        ),
-      ],
     );
   }
 }
@@ -1118,166 +973,6 @@ class _CourtMessageState extends StatelessWidget {
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: _freshGreen.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: _courtGreen,
-          fontSize: 11.5,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentScoresPanel extends StatelessWidget {
-  const _RecentScoresPanel({required this.scoresFuture});
-
-  final Future<List<ScoreSubmissionSummary>> scoresFuture;
-
-  @override
-  Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(
-            icon: Icons.scoreboard_rounded,
-            title: 'Recent scores',
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Submitted match scores appear here before ratings and rankings move.',
-            style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
-          ),
-          const SizedBox(height: 14),
-          FutureBuilder<List<ScoreSubmissionSummary>>(
-            future: scoresFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const _InlineLoadingState();
-              }
-              if (snapshot.hasError) {
-                return _CourtMessageState(
-                  icon: Icons.report_problem_rounded,
-                  title: 'Scores are unavailable',
-                  detail: 'Check the backend connection and try again.',
-                  color: _clay,
-                );
-              }
-
-              final scores = snapshot.data ?? [];
-              if (scores.isEmpty) {
-                return const _CourtMessageState(
-                  icon: Icons.scoreboard_rounded,
-                  title: 'No scores submitted yet',
-                  detail: 'Completed matches will show here after submission.',
-                  color: _courtGreen,
-                );
-              }
-
-              return Column(
-                children: [
-                  for (final score in scores) ...[
-                    _ScoreTile(score: score),
-                    if (score != scores.last) const SizedBox(height: 10),
-                  ],
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScoreTile extends StatelessWidget {
-  const _ScoreTile({required this.score});
-
-  final ScoreSubmissionSummary score;
-
-  @override
-  Widget build(BuildContext context) {
-    final winner = score.teamOneScore == score.teamTwoScore
-        ? 'Tied'
-        : score.teamOneScore > score.teamTwoScore
-        ? 'Team 1'
-        : 'Team 2';
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _chalk,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _line),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 54,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: _ink,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '${score.teamOneScore}-${score.teamTwoScore}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  winner == 'Tied' ? 'Score submitted' : '$winner led',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  score.notes?.trim().isNotEmpty == true
-                      ? score.notes!.trim()
-                      : 'Submitted for verification',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _muted, fontSize: 12.5),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          _StatusPill(label: score.status),
-        ],
-      ),
-    );
-  }
-}
-
 class _InlineLoadingState extends StatelessWidget {
   const _InlineLoadingState();
 
@@ -1295,284 +990,6 @@ class _InlineLoadingState extends StatelessWidget {
         width: 22,
         height: 22,
         child: CircularProgressIndicator(strokeWidth: 2.4),
-      ),
-    );
-  }
-}
-
-class _CourtDataStrip extends StatelessWidget {
-  const _CourtDataStrip();
-
-  @override
-  Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(
-            icon: Icons.query_stats_rounded,
-            title: 'Court data',
-          ),
-          const SizedBox(height: 14),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: _courtGreen,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: CustomPaint(
-              painter: const _CourtLinesPainter(),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: GridView.count(
-                  crossAxisCount: MediaQuery.sizeOf(context).width >= 620
-                      ? 4
-                      : 2,
-                  childAspectRatio: MediaQuery.sizeOf(context).width >= 620
-                      ? 1.35
-                      : 1.16,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: const [
-                    _DataStatusTile(
-                      icon: Icons.event_available_rounded,
-                      label: 'Events',
-                      detail: 'Open play',
-                    ),
-                    _DataStatusTile(
-                      icon: Icons.sports_score_rounded,
-                      label: 'Matches',
-                      detail: 'Scores',
-                    ),
-                    _DataStatusTile(
-                      icon: Icons.speed_rounded,
-                      label: 'Ratings',
-                      detail: 'Player form',
-                    ),
-                    _DataStatusTile(
-                      icon: Icons.leaderboard_rounded,
-                      label: 'Rankings',
-                      detail: 'Court ladder',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DataStatusTile extends StatelessWidget {
-  const _DataStatusTile({
-    required this.icon,
-    required this.label,
-    required this.detail,
-  });
-
-  final IconData icon;
-  final String label;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Icon(icon, color: _courtGreen, size: 24),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  detail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _muted, fontSize: 12),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CourtLinesPainter extends CustomPainter {
-  const _CourtLinesPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.22)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-    final outer = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      const Radius.circular(8),
-    );
-    canvas.drawRRect(outer.deflate(14), paint);
-    canvas.drawLine(
-      Offset(size.width / 2, 14),
-      Offset(size.width / 2, size.height - 14),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(14, size.height / 2),
-      Offset(size.width - 14, size.height / 2),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.25, 14),
-      Offset(size.width * 0.25, size.height - 14),
-      paint..color = Colors.white.withValues(alpha: 0.14),
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.75, 14),
-      Offset(size.width * 0.75, size.height - 14),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.title,
-    required this.detail,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String detail;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = _Panel(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _freshGreen.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: _courtGreen, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  detail,
-                  style: const TextStyle(
-                    color: _muted,
-                    fontSize: 12.5,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (onTap == null) {
-      return content;
-    }
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: content,
-      ),
-    );
-  }
-}
-
-class _NextMatchCard extends StatelessWidget {
-  const _NextMatchCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(icon: Icons.schedule_rounded, title: 'Next up'),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _clay.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _clay.withValues(alpha: 0.22)),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Thursday Competitive Play',
-                  style: TextStyle(
-                    color: _ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Ready for match setup once players are assigned.',
-                  style: TextStyle(color: _muted, height: 1.35),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

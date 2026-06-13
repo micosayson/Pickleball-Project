@@ -81,24 +81,30 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 900;
-            final content = _selectedIndex == 0
-                ? _PlayTab(
-                    isWide: isWide,
-                    fullName: fullName,
-                    courtsFuture: _courtsFuture,
-                    eventsFuture: _eventsFuture,
-                    scoresFuture: _scoresFuture,
-                    joinCourt: _joinCourt,
-                    joinEvent: _joinEvent,
-                  )
-                : _SettingsTab(
-                    isWide: isWide,
-                    isLoading: _isLoading,
-                    lastResult: _lastResult,
-                    fullName: fullName,
-                    user: user,
-                    runRequest: _runRequest,
-                  );
+            final content = switch (_selectedIndex) {
+              0 => _PlayTab(
+                isWide: isWide,
+                fullName: fullName,
+                eventsFuture: _eventsFuture,
+                scoresFuture: _scoresFuture,
+                joinEvent: _joinEvent,
+                onOpenCourts: () => setState(() => _selectedIndex = 1),
+                onOpenProfile: () => setState(() => _selectedIndex = 2),
+              ),
+              1 => _CourtsTab(
+                courtsFuture: _courtsFuture,
+                selectCourt: _selectCourt,
+              ),
+              2 => _ProfileTab(fullName: fullName, email: email, user: user),
+              _ => _SettingsTab(
+                isWide: isWide,
+                isLoading: _isLoading,
+                lastResult: _lastResult,
+                fullName: fullName,
+                user: user,
+                runRequest: _runRequest,
+              ),
+            };
 
             return CustomScrollView(
               slivers: [
@@ -158,6 +164,14 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
             label: 'Play',
           ),
           NavigationDestination(
+            icon: Icon(Icons.location_on_rounded),
+            label: 'Courts',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.settings_rounded),
             label: 'Settings',
           ),
@@ -173,10 +187,10 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     );
   }
 
-  Future<void> _joinCourt(CourtSummary court) {
+  Future<void> _selectCourt(CourtSummary court) {
     return _runRequest(
       () => const CourtMembershipService().joinCourt(court.id),
-      'POST /court-memberships/${court.id}',
+      'Court selected',
     );
   }
 }
@@ -185,20 +199,20 @@ class _PlayTab extends StatelessWidget {
   const _PlayTab({
     required this.isWide,
     required this.fullName,
-    required this.courtsFuture,
     required this.eventsFuture,
     required this.scoresFuture,
-    required this.joinCourt,
     required this.joinEvent,
+    required this.onOpenCourts,
+    required this.onOpenProfile,
   });
 
   final bool isWide;
   final String fullName;
-  final Future<List<CourtSummary>> courtsFuture;
   final Future<List<EventSummary>> eventsFuture;
   final Future<List<ScoreSubmissionSummary>> scoresFuture;
-  final Future<void> Function(CourtSummary) joinCourt;
   final Future<void> Function(EventSummary) joinEvent;
+  final VoidCallback onOpenCourts;
+  final VoidCallback onOpenProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -210,11 +224,11 @@ class _PlayTab extends StatelessWidget {
             flex: 7,
             child: _MainColumn(
               fullName: fullName,
-              courtsFuture: courtsFuture,
               eventsFuture: eventsFuture,
               scoresFuture: scoresFuture,
-              joinCourt: joinCourt,
               joinEvent: joinEvent,
+              onOpenCourts: onOpenCourts,
+              onOpenProfile: onOpenProfile,
             ),
           ),
           const SizedBox(width: 20),
@@ -227,15 +241,165 @@ class _PlayTab extends StatelessWidget {
       children: [
         _MainColumn(
           fullName: fullName,
-          courtsFuture: courtsFuture,
           eventsFuture: eventsFuture,
           scoresFuture: scoresFuture,
-          joinCourt: joinCourt,
           joinEvent: joinEvent,
+          onOpenCourts: onOpenCourts,
+          onOpenProfile: onOpenProfile,
         ),
         const SizedBox(height: 16),
         const _NextMatchCard(),
       ],
+    );
+  }
+}
+
+class _CourtsTab extends StatelessWidget {
+  const _CourtsTab({required this.courtsFuture, required this.selectCourt});
+
+  final Future<List<CourtSummary>> courtsFuture;
+  final Future<void> Function(CourtSummary) selectCourt;
+
+  @override
+  Widget build(BuildContext context) {
+    return _CourtDiscoveryPanel(
+      courtsFuture: courtsFuture,
+      onSelectCourt: selectCourt,
+      maxItems: 12,
+    );
+  }
+}
+
+class _ProfileTab extends StatelessWidget {
+  const _ProfileTab({
+    required this.fullName,
+    required this.email,
+    required this.user,
+  });
+
+  final String fullName;
+  final String email;
+  final User? user;
+
+  @override
+  Widget build(BuildContext context) {
+    final role = user?.userMetadata?['platform_role']?.toString() ?? 'player';
+    final createdAt = user?.createdAt;
+
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(icon: Icons.person_rounded, title: 'Profile'),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: _courtGreen,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    fullName.isEmpty ? 'P' : fullName.characters.first,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      email.isEmpty ? 'Signed in player' : email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _muted, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _ProfileRow(
+            icon: Icons.badge_rounded,
+            label: 'Role',
+            value: role.toUpperCase(),
+          ),
+          _ProfileRow(
+            icon: Icons.calendar_month_rounded,
+            label: 'Account created',
+            value: createdAt ?? 'Available after sync',
+          ),
+          _ProfileRow(
+            icon: Icons.speed_rounded,
+            label: 'Rating',
+            value: 'Connect ratings screen',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileRow extends StatelessWidget {
+  const _ProfileRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, color: _courtGreen, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: _muted, fontSize: 13.5),
+            ),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -344,19 +508,19 @@ class _HomeHeader extends StatelessWidget {
 class _MainColumn extends StatelessWidget {
   const _MainColumn({
     required this.fullName,
-    required this.courtsFuture,
     required this.eventsFuture,
     required this.scoresFuture,
-    required this.joinCourt,
     required this.joinEvent,
+    required this.onOpenCourts,
+    required this.onOpenProfile,
   });
 
   final String fullName;
-  final Future<List<CourtSummary>> courtsFuture;
   final Future<List<EventSummary>> eventsFuture;
   final Future<List<ScoreSubmissionSummary>> scoresFuture;
-  final Future<void> Function(CourtSummary) joinCourt;
   final Future<void> Function(EventSummary) joinEvent;
+  final VoidCallback onOpenCourts;
+  final VoidCallback onOpenProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -366,11 +530,6 @@ class _MainColumn extends StatelessWidget {
         const SizedBox(height: 16),
         const _CourtDataStrip(),
         const SizedBox(height: 16),
-        _CourtDiscoveryPanel(
-          courtsFuture: courtsFuture,
-          onJoinCourt: joinCourt,
-        ),
-        const SizedBox(height: 16),
         _EventDiscoveryPanel(
           eventsFuture: eventsFuture,
           onJoinEvent: joinEvent,
@@ -378,7 +537,7 @@ class _MainColumn extends StatelessWidget {
         const SizedBox(height: 16),
         _RecentScoresPanel(scoresFuture: scoresFuture),
         const SizedBox(height: 16),
-        const _QuickActions(),
+        _QuickActions(onOpenCourts: onOpenCourts, onOpenProfile: onOpenProfile),
       ],
     );
   }
@@ -489,7 +648,13 @@ class _MetricTile extends StatelessWidget {
 }
 
 class _QuickActions extends StatelessWidget {
-  const _QuickActions();
+  const _QuickActions({
+    required this.onOpenCourts,
+    required this.onOpenProfile,
+  });
+
+  final VoidCallback onOpenCourts;
+  final VoidCallback onOpenProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -500,21 +665,23 @@ class _QuickActions extends StatelessWidget {
       mainAxisSpacing: 12,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      children: const [
+      children: [
         _ActionTile(
           icon: Icons.map_rounded,
           title: 'Discover courts',
           detail: 'Find places to play nearby.',
+          onTap: onOpenCourts,
         ),
-        _ActionTile(
+        const _ActionTile(
           icon: Icons.event_available_rounded,
           title: 'Join events',
           detail: 'Open play and competitive sessions.',
         ),
         _ActionTile(
-          icon: Icons.leaderboard_rounded,
-          title: 'Track ratings',
-          detail: 'Match results drive rankings.',
+          icon: Icons.person_rounded,
+          title: 'Player profile',
+          detail: 'Review account and player status.',
+          onTap: onOpenProfile,
         ),
       ],
     );
@@ -524,11 +691,13 @@ class _QuickActions extends StatelessWidget {
 class _CourtDiscoveryPanel extends StatelessWidget {
   const _CourtDiscoveryPanel({
     required this.courtsFuture,
-    required this.onJoinCourt,
+    required this.onSelectCourt,
+    this.maxItems = 3,
   });
 
   final Future<List<CourtSummary>> courtsFuture;
-  final Future<void> Function(CourtSummary) onJoinCourt;
+  final Future<void> Function(CourtSummary) onSelectCourt;
+  final int maxItems;
 
   @override
   Widget build(BuildContext context) {
@@ -542,7 +711,7 @@ class _CourtDiscoveryPanel extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Choose a community before joining events or tracking ladder play.',
+            'Choose a court for events, match play, and ladder activity.',
             style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
           ),
           const SizedBox(height: 14),
@@ -572,11 +741,16 @@ class _CourtDiscoveryPanel extends StatelessWidget {
                 );
               }
 
-              final visibleCourts = courts.take(3).toList(growable: false);
+              final visibleCourts = courts
+                  .take(maxItems)
+                  .toList(growable: false);
               return Column(
                 children: [
                   for (final court in visibleCourts) ...[
-                    _CourtTile(court: court, onJoin: () => onJoinCourt(court)),
+                    _CourtTile(
+                      court: court,
+                      onSelect: () => onSelectCourt(court),
+                    ),
                     if (court != visibleCourts.last) const SizedBox(height: 10),
                   ],
                 ],
@@ -590,10 +764,10 @@ class _CourtDiscoveryPanel extends StatelessWidget {
 }
 
 class _CourtTile extends StatelessWidget {
-  const _CourtTile({required this.court, required this.onJoin});
+  const _CourtTile({required this.court, required this.onSelect});
 
   final CourtSummary court;
-  final VoidCallback onJoin;
+  final VoidCallback onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -645,9 +819,9 @@ class _CourtTile extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           IconButton.filledTonal(
-            onPressed: onJoin,
-            tooltip: 'Join court',
-            icon: const Icon(Icons.group_add_rounded),
+            onPressed: onSelect,
+            tooltip: 'Select court',
+            icon: const Icon(Icons.check_circle_rounded),
           ),
         ],
       ),
@@ -1215,15 +1389,17 @@ class _ActionTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.detail,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String detail;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
+    final content = _Panel(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1263,6 +1439,19 @@ class _ActionTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: content,
       ),
     );
   }

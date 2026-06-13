@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from app.db import models as _models  # noqa: F401
 from app.core.tenancy import TenantContext
+from app.modules.courts.service import CourtService
 from app.modules.events.schemas import EventUpdate
 from app.modules.events.service import EventService
 from app.modules.matches.schemas import MatchUpdate
@@ -23,7 +24,7 @@ class FakeRepository:
         self.created_item = None
         self.list_args = None
 
-    def list(self, scope, **kwargs):
+    def list(self, scope=None, **kwargs):
         self.list_args = (scope, kwargs)
         return []
 
@@ -48,6 +49,16 @@ def test_tenant_context_reports_scope():
     assert TenantContext().has_scope is False
     assert TenantContext(court_id=str(uuid4())).has_scope is True
     assert TenantContext(tenant_id=str(uuid4())).has_scope is True
+
+
+def test_court_service_passes_discovery_filters_to_repository():
+    repo = FakeRepository()
+    service = CourtService(repo)
+
+    result = service.list_courts(status="active", limit=12, offset=3)
+
+    assert result == []
+    assert repo.list_args == (None, {"status": "active", "limit": 12, "offset": 3})
 
 
 def test_event_update_rejects_cross_court_change():

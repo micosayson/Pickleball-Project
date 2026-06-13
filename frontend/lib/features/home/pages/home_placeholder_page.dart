@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../auth/pages/login_page.dart';
 import '../../auth/services/auth_service.dart';
+import '../../courts/services/court_service.dart';
 
 const _courtGreen = Color(0xFF315C3A);
 const _freshGreen = Color(0xFF78A85A);
@@ -22,8 +23,15 @@ class HomePlaceholderPage extends StatefulWidget {
 }
 
 class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
+  late final Future<List<CourtSummary>> _courtsFuture;
   String _lastResult = 'Backend checks have not run yet.';
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _courtsFuture = const CourtService().listCourts();
+  }
 
   Future<void> _runRequest(
     Future<dynamic> Function() request,
@@ -113,6 +121,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                                     lastResult: _lastResult,
                                     fullName: fullName,
                                     user: user,
+                                    courtsFuture: _courtsFuture,
                                     runRequest: _runRequest,
                                   ),
                                 ),
@@ -127,6 +136,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                                   lastResult: _lastResult,
                                   fullName: fullName,
                                   user: user,
+                                  courtsFuture: _courtsFuture,
                                   runRequest: _runRequest,
                                 ),
                                 const SizedBox(height: 16),
@@ -208,6 +218,7 @@ class _MainColumn extends StatelessWidget {
     required this.lastResult,
     required this.fullName,
     required this.user,
+    required this.courtsFuture,
     required this.runRequest,
   });
 
@@ -215,6 +226,7 @@ class _MainColumn extends StatelessWidget {
   final String lastResult;
   final String fullName;
   final User? user;
+  final Future<List<CourtSummary>> courtsFuture;
   final Future<void> Function(Future<dynamic> Function(), String) runRequest;
 
   @override
@@ -224,6 +236,8 @@ class _MainColumn extends StatelessWidget {
         _HeroPanel(fullName: fullName),
         const SizedBox(height: 16),
         const _CourtDataStrip(),
+        const SizedBox(height: 16),
+        _CourtDiscoveryPanel(courtsFuture: courtsFuture),
         const SizedBox(height: 16),
         const _QuickActions(),
         const SizedBox(height: 16),
@@ -372,6 +386,234 @@ class _QuickActions extends StatelessWidget {
           detail: 'Match results drive rankings.',
         ),
       ],
+    );
+  }
+}
+
+class _CourtDiscoveryPanel extends StatelessWidget {
+  const _CourtDiscoveryPanel({required this.courtsFuture});
+
+  final Future<List<CourtSummary>> courtsFuture;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.location_on_rounded,
+            title: 'Nearby courts',
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Choose a community before joining events or tracking ladder play.',
+            style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
+          ),
+          const SizedBox(height: 14),
+          FutureBuilder<List<CourtSummary>>(
+            future: courtsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const _CourtLoadingState();
+              }
+              if (snapshot.hasError) {
+                return _CourtMessageState(
+                  icon: Icons.cloud_off_rounded,
+                  title: 'Courts are unavailable',
+                  detail: 'Check the backend connection and try again.',
+                  color: _clay,
+                );
+              }
+
+              final courts = snapshot.data ?? [];
+              if (courts.isEmpty) {
+                return const _CourtMessageState(
+                  icon: Icons.add_location_alt_rounded,
+                  title: 'No courts published yet',
+                  detail:
+                      'Create an active court record to make discovery live.',
+                  color: _courtGreen,
+                );
+              }
+
+              final visibleCourts = courts.take(3).toList(growable: false);
+              return Column(
+                children: [
+                  for (final court in visibleCourts) ...[
+                    _CourtTile(court: court),
+                    if (court != visibleCourts.last) const SizedBox(height: 10),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CourtTile extends StatelessWidget {
+  const _CourtTile({required this.court});
+
+  final CourtSummary court;
+
+  @override
+  Widget build(BuildContext context) {
+    final address = court.address?.trim();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _chalk,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: _courtGreen,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.sports_tennis_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  court.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  address == null || address.isEmpty
+                      ? 'Community court'
+                      : address,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _muted, fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _StatusPill(label: court.status),
+        ],
+      ),
+    );
+  }
+}
+
+class _CourtLoadingState extends StatelessWidget {
+  const _CourtLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 76,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _chalk,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: const SizedBox(
+        width: 22,
+        height: 22,
+        child: CircularProgressIndicator(strokeWidth: 2.4),
+      ),
+    );
+  }
+}
+
+class _CourtMessageState extends StatelessWidget {
+  const _CourtMessageState({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  detail,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12.5,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: _freshGreen.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: _courtGreen,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }
@@ -775,6 +1017,15 @@ class _DeveloperChecks extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
+              _CheckButton(
+                label: 'Courts',
+                icon: Icons.location_on_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.get(ApiEndpoints.courts),
+                  'GET /courts',
+                ),
+              ),
               _CheckButton(
                 label: 'Events',
                 icon: Icons.event_available_rounded,

@@ -45,3 +45,48 @@ class CourtService {
         .toList(growable: false);
   }
 }
+
+class CourtMembershipSummary {
+  const CourtMembershipSummary({
+    required this.id,
+    required this.courtId,
+    required this.status,
+  });
+
+  final String id;
+  final String courtId;
+  final String status;
+
+  factory CourtMembershipSummary.fromJson(Map<String, dynamic> json) {
+    return CourtMembershipSummary(
+      id: json['id']?.toString() ?? '',
+      courtId: json['court_id']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'active',
+    );
+  }
+}
+
+class CourtMembershipService {
+  const CourtMembershipService();
+
+  Future<CourtMembershipSummary> joinCourt(String courtId) async {
+    final response = await ApiClient.instance.post<Map<String, dynamic>>(
+      ApiEndpoints.courtMembership(courtId),
+    );
+    return CourtMembershipSummary.fromJson(response.data ?? {});
+  }
+
+  Future<List<CourtMembershipSummary>> listMyMemberships() async {
+    final response = await ApiClient.instance.get<List<dynamic>>(
+      '${ApiEndpoints.courtMemberships}/me',
+    );
+    final data = response.data ?? [];
+    return data
+        .whereType<Map>()
+        .map(
+          (item) =>
+              CourtMembershipSummary.fromJson(Map<String, dynamic>.from(item)),
+        )
+        .toList(growable: false);
+  }
+}

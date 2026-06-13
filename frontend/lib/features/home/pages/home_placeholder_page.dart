@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -51,8 +52,9 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     try {
       final response = await request();
       if (!mounted) return;
+      final result = response is Response ? response.data : response;
       setState(() {
-        _lastResult = '$label succeeded: ${response.data}';
+        _lastResult = '$label succeeded: $result';
       });
     } catch (error) {
       if (!mounted) return;
@@ -130,6 +132,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                                     courtsFuture: _courtsFuture,
                                     eventsFuture: _eventsFuture,
                                     scoresFuture: _scoresFuture,
+                                    joinCourt: _joinCourt,
                                     joinEvent: _joinEvent,
                                     runRequest: _runRequest,
                                   ),
@@ -148,6 +151,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                                   courtsFuture: _courtsFuture,
                                   eventsFuture: _eventsFuture,
                                   scoresFuture: _scoresFuture,
+                                  joinCourt: _joinCourt,
                                   joinEvent: _joinEvent,
                                   runRequest: _runRequest,
                                 ),
@@ -170,6 +174,13 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     return _runRequest(
       () => const EventService().joinEvent(event.id),
       'POST /event-registrations/${event.id}',
+    );
+  }
+
+  Future<void> _joinCourt(CourtSummary court) {
+    return _runRequest(
+      () => const CourtMembershipService().joinCourt(court.id),
+      'POST /court-memberships/${court.id}',
     );
   }
 }
@@ -240,6 +251,7 @@ class _MainColumn extends StatelessWidget {
     required this.courtsFuture,
     required this.eventsFuture,
     required this.scoresFuture,
+    required this.joinCourt,
     required this.joinEvent,
     required this.runRequest,
   });
@@ -251,6 +263,7 @@ class _MainColumn extends StatelessWidget {
   final Future<List<CourtSummary>> courtsFuture;
   final Future<List<EventSummary>> eventsFuture;
   final Future<List<ScoreSubmissionSummary>> scoresFuture;
+  final Future<void> Function(CourtSummary) joinCourt;
   final Future<void> Function(EventSummary) joinEvent;
   final Future<void> Function(Future<dynamic> Function(), String) runRequest;
 
@@ -262,7 +275,10 @@ class _MainColumn extends StatelessWidget {
         const SizedBox(height: 16),
         const _CourtDataStrip(),
         const SizedBox(height: 16),
-        _CourtDiscoveryPanel(courtsFuture: courtsFuture),
+        _CourtDiscoveryPanel(
+          courtsFuture: courtsFuture,
+          onJoinCourt: joinCourt,
+        ),
         const SizedBox(height: 16),
         _EventDiscoveryPanel(
           eventsFuture: eventsFuture,
@@ -423,9 +439,13 @@ class _QuickActions extends StatelessWidget {
 }
 
 class _CourtDiscoveryPanel extends StatelessWidget {
-  const _CourtDiscoveryPanel({required this.courtsFuture});
+  const _CourtDiscoveryPanel({
+    required this.courtsFuture,
+    required this.onJoinCourt,
+  });
 
   final Future<List<CourtSummary>> courtsFuture;
+  final Future<void> Function(CourtSummary) onJoinCourt;
 
   @override
   Widget build(BuildContext context) {
@@ -473,7 +493,7 @@ class _CourtDiscoveryPanel extends StatelessWidget {
               return Column(
                 children: [
                   for (final court in visibleCourts) ...[
-                    _CourtTile(court: court),
+                    _CourtTile(court: court, onJoin: () => onJoinCourt(court)),
                     if (court != visibleCourts.last) const SizedBox(height: 10),
                   ],
                 ],
@@ -487,9 +507,10 @@ class _CourtDiscoveryPanel extends StatelessWidget {
 }
 
 class _CourtTile extends StatelessWidget {
-  const _CourtTile({required this.court});
+  const _CourtTile({required this.court, required this.onJoin});
 
   final CourtSummary court;
+  final VoidCallback onJoin;
 
   @override
   Widget build(BuildContext context) {
@@ -540,7 +561,11 @@ class _CourtTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          _StatusPill(label: court.status),
+          IconButton.filledTonal(
+            onPressed: onJoin,
+            tooltip: 'Join court',
+            icon: const Icon(Icons.group_add_rounded),
+          ),
         ],
       ),
     );
@@ -1347,6 +1372,17 @@ class _DeveloperChecks extends StatelessWidget {
                 onPressed: () => runRequest(
                   () => ApiClient.instance.get(ApiEndpoints.courts),
                   'GET /courts',
+                ),
+              ),
+              _CheckButton(
+                label: 'My courts',
+                icon: Icons.groups_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.get(
+                    '${ApiEndpoints.courtMemberships}/me',
+                  ),
+                  'GET /court-memberships/me',
                 ),
               ),
               _CheckButton(

@@ -10,6 +10,9 @@ class ApiEndpoints {
 
   static const String courts = '/courts';
   static String court(String id) => '/courts/$id';
+  static const String courtMemberships = '/court-memberships';
+  static String courtMembership(String courtId) =>
+      '/court-memberships/$courtId';
 
   static const String events = '/events';
   static String event(String id) => '/events/$id';

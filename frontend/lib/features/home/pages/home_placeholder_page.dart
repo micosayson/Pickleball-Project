@@ -223,6 +223,8 @@ class _MainColumn extends StatelessWidget {
       children: [
         _HeroPanel(fullName: fullName),
         const SizedBox(height: 16),
+        const _CourtDataStrip(),
+        const SizedBox(height: 16),
         const _QuickActions(),
         const SizedBox(height: 16),
         _DeveloperChecks(
@@ -374,6 +376,113 @@ class _QuickActions extends StatelessWidget {
   }
 }
 
+class _CourtDataStrip extends StatelessWidget {
+  const _CourtDataStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.query_stats_rounded,
+            title: 'Court data',
+          ),
+          const SizedBox(height: 14),
+          GridView.count(
+            crossAxisCount: MediaQuery.sizeOf(context).width >= 620 ? 4 : 2,
+            childAspectRatio: MediaQuery.sizeOf(context).width >= 620
+                ? 1.45
+                : 1.28,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: const [
+              _DataStatusTile(
+                icon: Icons.event_available_rounded,
+                label: 'Events',
+                detail: 'Open play',
+              ),
+              _DataStatusTile(
+                icon: Icons.sports_score_rounded,
+                label: 'Matches',
+                detail: 'Scores',
+              ),
+              _DataStatusTile(
+                icon: Icons.speed_rounded,
+                label: 'Ratings',
+                detail: 'Player form',
+              ),
+              _DataStatusTile(
+                icon: Icons.leaderboard_rounded,
+                label: 'Rankings',
+                detail: 'Court ladder',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DataStatusTile extends StatelessWidget {
+  const _DataStatusTile({
+    required this.icon,
+    required this.label,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String label;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _chalk,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Icon(icon, color: _courtGreen, size: 24),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ActionTile extends StatelessWidget {
   const _ActionTile({
     required this.icon,
@@ -479,7 +588,7 @@ class _NextMatchCard extends StatelessWidget {
                 ),
                 SizedBox(height: 6),
                 Text(
-                  'Seed data event used for backend verification.',
+                  'Ready for match setup once players are assigned.',
                   style: TextStyle(color: _muted, height: 1.35),
                 ),
               ],
@@ -506,8 +615,8 @@ class _ReadinessCard extends StatelessWidget {
           ),
           SizedBox(height: 14),
           _ReadinessRow(text: 'Supabase Auth connected'),
-          _ReadinessRow(text: 'FastAPI profile sync available'),
-          _ReadinessRow(text: 'Tenant and RLS work still pending'),
+          _ReadinessRow(text: 'FastAPI profile sync live'),
+          _ReadinessRow(text: 'Events, matches, ratings, rankings routed'),
         ],
       ),
     );
@@ -560,7 +669,10 @@ class _DeveloperChecks extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionTitle(icon: Icons.api_rounded, title: 'Backend checks'),
+          const _SectionTitle(
+            icon: Icons.api_rounded,
+            title: 'Live API checks',
+          ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,
@@ -600,6 +712,49 @@ class _DeveloperChecks extends StatelessWidget {
                     data: {'full_name': '$fullName Updated'},
                   ),
                   'PATCH /users/me',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _CheckButton(
+                label: 'Events',
+                icon: Icons.event_available_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.get(ApiEndpoints.events),
+                  'GET /events',
+                ),
+              ),
+              _CheckButton(
+                label: 'Matches',
+                icon: Icons.sports_score_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.get(ApiEndpoints.matches),
+                  'GET /matches',
+                ),
+              ),
+              _CheckButton(
+                label: 'Ratings',
+                icon: Icons.speed_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.get(ApiEndpoints.ratings),
+                  'GET /ratings',
+                ),
+              ),
+              _CheckButton(
+                label: 'Rankings',
+                icon: Icons.leaderboard_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.get(ApiEndpoints.rankings),
+                  'GET /rankings',
                 ),
               ),
             ],

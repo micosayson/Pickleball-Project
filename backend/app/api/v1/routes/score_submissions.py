@@ -1,3 +1,38 @@
-from fastapi import APIRouter
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+
+from app.api.v1.deps import get_current_principal
+from app.core.security import Principal
+from app.db.session import get_db
+from app.modules.score_submissions.repository import ScoreSubmissionRepository
+from app.modules.score_submissions.schemas import ScoreSubmissionRead
+from app.modules.score_submissions.service import ScoreSubmissionService
 
 router = APIRouter()
+
+
+def _service(db: Session) -> ScoreSubmissionService:
+    return ScoreSubmissionService(ScoreSubmissionRepository(db))
+
+
+@router.get("", response_model=list[ScoreSubmissionRead])
+def list_score_submissions(
+    court_id: UUID | None = None,
+    event_id: UUID | None = None,
+    match_id: UUID | None = None,
+    status: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    _: Principal = Depends(get_current_principal),
+    db: Session = Depends(get_db),
+):
+    return _service(db).list_score_submissions(
+        court_id=court_id,
+        event_id=event_id,
+        match_id=match_id,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )

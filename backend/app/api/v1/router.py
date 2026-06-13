@@ -7,6 +7,7 @@ from app.api.v1.routes.invitations import router as invitations_router
 from app.api.v1.routes.matches import router as matches_router
 from app.api.v1.routes.rankings import router as rankings_router
 from app.api.v1.routes.ratings import router as ratings_router
+from app.api.v1.routes.score_submissions import router as score_submissions_router
 from app.api.v1.routes.test import router as test_router
 from app.api.v1.routes.users import router as users_router
 
@@ -19,4 +20,5 @@ api_router.include_router(events_router, prefix="/events", tags=["events"])
 api_router.include_router(matches_router, prefix="/matches", tags=["matches"])
 api_router.include_router(ratings_router, prefix="/ratings", tags=["ratings"])
 api_router.include_router(rankings_router, prefix="/rankings", tags=["rankings"])
+api_router.include_router(score_submissions_router, prefix="/score-submissions", tags=["score-submissions"])
 api_router.include_router(test_router, prefix="/test", tags=["test"])

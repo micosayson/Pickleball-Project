@@ -6,6 +6,7 @@ import '../../../core/network/api_endpoints.dart';
 import '../../auth/pages/login_page.dart';
 import '../../auth/services/auth_service.dart';
 import '../../courts/services/court_service.dart';
+import '../../scores/services/score_submission_service.dart';
 
 const _courtGreen = Color(0xFF315C3A);
 const _freshGreen = Color(0xFF78A85A);
@@ -24,6 +25,7 @@ class HomePlaceholderPage extends StatefulWidget {
 
 class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   late final Future<List<CourtSummary>> _courtsFuture;
+  late final Future<List<ScoreSubmissionSummary>> _scoresFuture;
   String _lastResult = 'Backend checks have not run yet.';
   bool _isLoading = false;
 
@@ -31,6 +33,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   void initState() {
     super.initState();
     _courtsFuture = const CourtService().listCourts();
+    _scoresFuture = const ScoreSubmissionService().listRecent();
   }
 
   Future<void> _runRequest(
@@ -122,6 +125,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                                     fullName: fullName,
                                     user: user,
                                     courtsFuture: _courtsFuture,
+                                    scoresFuture: _scoresFuture,
                                     runRequest: _runRequest,
                                   ),
                                 ),
@@ -137,6 +141,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                                   fullName: fullName,
                                   user: user,
                                   courtsFuture: _courtsFuture,
+                                  scoresFuture: _scoresFuture,
                                   runRequest: _runRequest,
                                 ),
                                 const SizedBox(height: 16),
@@ -219,6 +224,7 @@ class _MainColumn extends StatelessWidget {
     required this.fullName,
     required this.user,
     required this.courtsFuture,
+    required this.scoresFuture,
     required this.runRequest,
   });
 
@@ -227,6 +233,7 @@ class _MainColumn extends StatelessWidget {
   final String fullName;
   final User? user;
   final Future<List<CourtSummary>> courtsFuture;
+  final Future<List<ScoreSubmissionSummary>> scoresFuture;
   final Future<void> Function(Future<dynamic> Function(), String) runRequest;
 
   @override
@@ -238,6 +245,8 @@ class _MainColumn extends StatelessWidget {
         const _CourtDataStrip(),
         const SizedBox(height: 16),
         _CourtDiscoveryPanel(courtsFuture: courtsFuture),
+        const SizedBox(height: 16),
+        _RecentScoresPanel(scoresFuture: scoresFuture),
         const SizedBox(height: 16),
         const _QuickActions(),
         const SizedBox(height: 16),
@@ -613,6 +622,163 @@ class _StatusPill extends StatelessWidget {
           fontSize: 11.5,
           fontWeight: FontWeight.w900,
         ),
+      ),
+    );
+  }
+}
+
+class _RecentScoresPanel extends StatelessWidget {
+  const _RecentScoresPanel({required this.scoresFuture});
+
+  final Future<List<ScoreSubmissionSummary>> scoresFuture;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.scoreboard_rounded,
+            title: 'Recent scores',
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Submitted match scores appear here before ratings and rankings move.',
+            style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
+          ),
+          const SizedBox(height: 14),
+          FutureBuilder<List<ScoreSubmissionSummary>>(
+            future: scoresFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const _InlineLoadingState();
+              }
+              if (snapshot.hasError) {
+                return _CourtMessageState(
+                  icon: Icons.report_problem_rounded,
+                  title: 'Scores are unavailable',
+                  detail: 'Check the backend connection and try again.',
+                  color: _clay,
+                );
+              }
+
+              final scores = snapshot.data ?? [];
+              if (scores.isEmpty) {
+                return const _CourtMessageState(
+                  icon: Icons.scoreboard_rounded,
+                  title: 'No scores submitted yet',
+                  detail: 'Completed matches will show here after submission.',
+                  color: _courtGreen,
+                );
+              }
+
+              return Column(
+                children: [
+                  for (final score in scores) ...[
+                    _ScoreTile(score: score),
+                    if (score != scores.last) const SizedBox(height: 10),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScoreTile extends StatelessWidget {
+  const _ScoreTile({required this.score});
+
+  final ScoreSubmissionSummary score;
+
+  @override
+  Widget build(BuildContext context) {
+    final winner = score.teamOneScore == score.teamTwoScore
+        ? 'Tied'
+        : score.teamOneScore > score.teamTwoScore
+        ? 'Team 1'
+        : 'Team 2';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _chalk,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _ink,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${score.teamOneScore}-${score.teamTwoScore}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  winner == 'Tied' ? 'Score submitted' : '$winner led',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  score.notes?.trim().isNotEmpty == true
+                      ? score.notes!.trim()
+                      : 'Submitted for verification',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _muted, fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _StatusPill(label: score.status),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineLoadingState extends StatelessWidget {
+  const _InlineLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 76,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _chalk,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: const SizedBox(
+        width: 22,
+        height: 22,
+        child: CircularProgressIndicator(strokeWidth: 2.4),
       ),
     );
   }
@@ -1060,6 +1226,15 @@ class _DeveloperChecks extends StatelessWidget {
                 onPressed: () => runRequest(
                   () => ApiClient.instance.get(ApiEndpoints.rankings),
                   'GET /rankings',
+                ),
+              ),
+              _CheckButton(
+                label: 'Scores',
+                icon: Icons.scoreboard_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.get(ApiEndpoints.scoreSubmissions),
+                  'GET /score-submissions',
                 ),
               ),
             ],

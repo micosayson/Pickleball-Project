@@ -25,4 +25,5 @@ class ApiEndpoints {
 
   static const String payments = '/payments';
   static const String invitations = '/invitations';
+  static const String scoreSubmissions = '/score-submissions';
 }

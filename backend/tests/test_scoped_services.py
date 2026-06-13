@@ -15,6 +15,7 @@ from app.modules.ratings.schemas import RatingCreate
 from app.modules.ratings.service import RatingService
 from app.modules.rankings.schemas import RankingCreate
 from app.modules.rankings.service import RankingService
+from app.modules.score_submissions.service import ScoreSubmissionService
 
 
 class FakeRepository:
@@ -59,6 +60,35 @@ def test_court_service_passes_discovery_filters_to_repository():
 
     assert result == []
     assert repo.list_args == (None, {"status": "active", "limit": 12, "offset": 3})
+
+
+def test_score_submission_service_passes_filters_to_repository():
+    repo = FakeRepository()
+    service = ScoreSubmissionService(repo)
+    court_id = uuid4()
+    match_id = uuid4()
+
+    result = service.list_score_submissions(
+        court_id=court_id,
+        event_id=None,
+        match_id=match_id,
+        status="pending",
+        limit=8,
+        offset=2,
+    )
+
+    assert result == []
+    assert repo.list_args == (
+        None,
+        {
+            "court_id": court_id,
+            "event_id": None,
+            "match_id": match_id,
+            "status": "pending",
+            "limit": 8,
+            "offset": 2,
+        },
+    )
 
 
 def test_event_update_rejects_cross_court_change():

@@ -55,6 +55,40 @@ class EventRegistrationService:
             )
         )
 
+    def check_in_event(self, event_id: UUID, scope: TenantContext) -> EventRegistration:
+        user_id = self._backend_user_id(scope)
+        event = self.repository.get_event(event_id, scope)
+        if event is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+        if event.status not in {"published", "open", "scheduled", "in_progress"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Event lobby is not open",
+            )
+
+        checked_in_at = datetime.now(UTC)
+        existing = self.repository.get_for_event_user(event_id, user_id)
+        if existing is not None:
+            return self.repository.update(
+                existing,
+                {
+                    "status": "checked_in",
+                    "cancelled_at": None,
+                    "checked_in_at": checked_in_at,
+                    "checked_out_at": None,
+                },
+            )
+
+        return self.repository.create(
+            EventRegistration(
+                court_id=event.court_id,
+                event_id=event.id,
+                user_id=user_id,
+                status="checked_in",
+                checked_in_at=checked_in_at,
+            )
+        )
+
     def cancel_event_registration(self, event_id: UUID, scope: TenantContext) -> EventRegistration:
         user_id = self._backend_user_id(scope)
         event = self.repository.get_event(event_id, scope)

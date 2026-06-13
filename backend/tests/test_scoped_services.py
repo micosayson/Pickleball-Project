@@ -295,6 +295,53 @@ def test_event_registration_join_rejects_closed_event():
     assert exc.value.status_code == 409
 
 
+def test_event_registration_check_in_creates_checked_in_registration():
+    court_id = uuid4()
+    event_id = uuid4()
+    user_id = uuid4()
+    event = SimpleNamespace(id=event_id, court_id=court_id, status="in_progress")
+    repo = FakeEventRegistrationRepository(event=event)
+    service = EventRegistrationService(repo)
+
+    registration = service.check_in_event(
+        event_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert registration.court_id == court_id
+    assert registration.event_id == event_id
+    assert registration.user_id == user_id
+    assert registration.status == "checked_in"
+    assert registration.checked_in_at is not None
+
+
+def test_event_registration_check_in_updates_existing_registration():
+    event_id = uuid4()
+    user_id = uuid4()
+    existing = SimpleNamespace(
+        status="registered",
+        cancelled_at="cancelled",
+        checked_in_at=None,
+        checked_out_at="left",
+    )
+    repo = FakeEventRegistrationRepository(
+        event=SimpleNamespace(id=event_id, court_id=uuid4(), status="scheduled"),
+        registration=existing,
+    )
+    service = EventRegistrationService(repo)
+
+    registration = service.check_in_event(
+        event_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert registration is existing
+    assert registration.status == "checked_in"
+    assert registration.cancelled_at is None
+    assert registration.checked_in_at is not None
+    assert registration.checked_out_at is None
+
+
 def test_event_update_rejects_cross_court_change():
     repo = FakeRepository(SimpleNamespace(id=uuid4(), court_id=uuid4()))
     service = EventService(repo)

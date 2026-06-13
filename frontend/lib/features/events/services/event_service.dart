@@ -45,18 +45,29 @@ class EventRegistrationSummary {
     required this.id,
     required this.eventId,
     required this.status,
+    this.checkedInAt,
   });
 
   final String id;
   final String eventId;
   final String status;
+  final DateTime? checkedInAt;
 
   factory EventRegistrationSummary.fromJson(Map<String, dynamic> json) {
     return EventRegistrationSummary(
       id: json['id']?.toString() ?? '',
       eventId: json['event_id']?.toString() ?? '',
       status: json['status']?.toString() ?? 'registered',
+      checkedInAt: DateTime.tryParse(json['checked_in_at']?.toString() ?? ''),
     );
+  }
+
+  @override
+  String toString() {
+    final checkedIn = checkedInAt?.toLocal().toIso8601String();
+    return checkedIn == null
+        ? '{event_id: $eventId, status: $status}'
+        : '{event_id: $eventId, status: $status, checked_in_at: $checkedIn}';
   }
 }
 
@@ -78,6 +89,13 @@ class EventService {
   Future<EventRegistrationSummary> joinEvent(String eventId) async {
     final response = await ApiClient.instance.post<Map<String, dynamic>>(
       ApiEndpoints.eventRegistration(eventId),
+    );
+    return EventRegistrationSummary.fromJson(response.data ?? {});
+  }
+
+  Future<EventRegistrationSummary> joinLobby(String eventId) async {
+    final response = await ApiClient.instance.post<Map<String, dynamic>>(
+      ApiEndpoints.eventCheckIn(eventId),
     );
     return EventRegistrationSummary.fromJson(response.data ?? {});
   }

@@ -87,7 +87,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                 fullName: fullName,
                 eventsFuture: _eventsFuture,
                 scoresFuture: _scoresFuture,
-                joinEvent: _joinEvent,
+                joinLobby: _joinLobby,
                 onOpenCourts: () => setState(() => _selectedIndex = 1),
                 onOpenProfile: () => setState(() => _selectedIndex = 2),
               ),
@@ -180,10 +180,10 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     );
   }
 
-  Future<void> _joinEvent(EventSummary event) {
+  Future<void> _joinLobby(EventSummary event) {
     return _runRequest(
-      () => const EventService().joinEvent(event.id),
-      'POST /event-registrations/${event.id}',
+      () => const EventService().joinLobby(event.id),
+      'Join lobby',
     );
   }
 
@@ -201,7 +201,7 @@ class _PlayTab extends StatelessWidget {
     required this.fullName,
     required this.eventsFuture,
     required this.scoresFuture,
-    required this.joinEvent,
+    required this.joinLobby,
     required this.onOpenCourts,
     required this.onOpenProfile,
   });
@@ -210,7 +210,7 @@ class _PlayTab extends StatelessWidget {
   final String fullName;
   final Future<List<EventSummary>> eventsFuture;
   final Future<List<ScoreSubmissionSummary>> scoresFuture;
-  final Future<void> Function(EventSummary) joinEvent;
+  final Future<void> Function(EventSummary) joinLobby;
   final VoidCallback onOpenCourts;
   final VoidCallback onOpenProfile;
 
@@ -226,7 +226,7 @@ class _PlayTab extends StatelessWidget {
               fullName: fullName,
               eventsFuture: eventsFuture,
               scoresFuture: scoresFuture,
-              joinEvent: joinEvent,
+              joinLobby: joinLobby,
               onOpenCourts: onOpenCourts,
               onOpenProfile: onOpenProfile,
             ),
@@ -243,7 +243,7 @@ class _PlayTab extends StatelessWidget {
           fullName: fullName,
           eventsFuture: eventsFuture,
           scoresFuture: scoresFuture,
-          joinEvent: joinEvent,
+          joinLobby: joinLobby,
           onOpenCourts: onOpenCourts,
           onOpenProfile: onOpenProfile,
         ),
@@ -510,7 +510,7 @@ class _MainColumn extends StatelessWidget {
     required this.fullName,
     required this.eventsFuture,
     required this.scoresFuture,
-    required this.joinEvent,
+    required this.joinLobby,
     required this.onOpenCourts,
     required this.onOpenProfile,
   });
@@ -518,7 +518,7 @@ class _MainColumn extends StatelessWidget {
   final String fullName;
   final Future<List<EventSummary>> eventsFuture;
   final Future<List<ScoreSubmissionSummary>> scoresFuture;
-  final Future<void> Function(EventSummary) joinEvent;
+  final Future<void> Function(EventSummary) joinLobby;
   final VoidCallback onOpenCourts;
   final VoidCallback onOpenProfile;
 
@@ -532,7 +532,7 @@ class _MainColumn extends StatelessWidget {
         const SizedBox(height: 16),
         _EventDiscoveryPanel(
           eventsFuture: eventsFuture,
-          onJoinEvent: joinEvent,
+          onJoinLobby: joinLobby,
         ),
         const SizedBox(height: 16),
         _RecentScoresPanel(scoresFuture: scoresFuture),
@@ -832,11 +832,11 @@ class _CourtTile extends StatelessWidget {
 class _EventDiscoveryPanel extends StatelessWidget {
   const _EventDiscoveryPanel({
     required this.eventsFuture,
-    required this.onJoinEvent,
+    required this.onJoinLobby,
   });
 
   final Future<List<EventSummary>> eventsFuture;
-  final Future<void> Function(EventSummary) onJoinEvent;
+  final Future<void> Function(EventSummary) onJoinLobby;
 
   @override
   Widget build(BuildContext context) {
@@ -850,7 +850,7 @@ class _EventDiscoveryPanel extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Join active sessions and move into match play from your event list.',
+            'Join the lobby to confirm you are at the court and ready for upcoming matches.',
             style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
           ),
           const SizedBox(height: 14),
@@ -882,7 +882,10 @@ class _EventDiscoveryPanel extends StatelessWidget {
               return Column(
                 children: [
                   for (final event in events) ...[
-                    _EventTile(event: event, onJoin: () => onJoinEvent(event)),
+                    _EventTile(
+                      event: event,
+                      onJoinLobby: () => onJoinLobby(event),
+                    ),
                     if (event != events.last) const SizedBox(height: 10),
                   ],
                 ],
@@ -896,10 +899,10 @@ class _EventDiscoveryPanel extends StatelessWidget {
 }
 
 class _EventTile extends StatelessWidget {
-  const _EventTile({required this.event, required this.onJoin});
+  const _EventTile({required this.event, required this.onJoinLobby});
 
   final EventSummary event;
-  final VoidCallback onJoin;
+  final VoidCallback onJoinLobby;
 
   @override
   Widget build(BuildContext context) {
@@ -952,10 +955,17 @@ class _EventTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          IconButton.filledTonal(
-            onPressed: onJoin,
-            tooltip: 'Join event',
-            icon: const Icon(Icons.person_add_alt_1_rounded),
+          FilledButton.icon(
+            onPressed: onJoinLobby,
+            icon: const Icon(Icons.login_rounded, size: 18),
+            label: const Text('Join lobby'),
+            style: FilledButton.styleFrom(
+              backgroundColor: _ink,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
         ],
       ),

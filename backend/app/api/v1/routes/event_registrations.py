@@ -39,6 +39,16 @@ def join_event(
     return _service(db).join_event(event_id, scope)
 
 
+@router.post("/{event_id}/check-in", response_model=EventRegistrationRead)
+def check_in_event(
+    event_id: UUID,
+    _: Principal = Depends(get_current_principal),
+    scope: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    return _service(db).check_in_event(event_id, scope)
+
+
 @router.delete("/{event_id}", response_model=EventRegistrationRead)
 def cancel_event_registration(
     event_id: UUID,

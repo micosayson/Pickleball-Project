@@ -28,13 +28,7 @@ class EventService:
                 detail="Event court does not match request court scope",
             )
 
-        if scope.tenant_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Event creation requires tenant scope",
-            )
-
-        return self.repository.create(Event(**payload.model_dump(), tenant_id=UUID(scope.tenant_id)))
+        return self.repository.create(Event(**payload.model_dump()))
 
     def update_event(self, event_id: UUID, payload: EventUpdate, scope: TenantContext) -> Event:
         event = self.get_event(event_id, scope)

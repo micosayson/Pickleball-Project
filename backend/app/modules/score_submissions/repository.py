@@ -24,8 +24,6 @@ class ScoreSubmissionRepository:
         if scope is not None:
             if scope.court_id:
                 query = query.filter(ScoreSubmission.court_id == UUID(scope.court_id))
-            elif scope.tenant_id:
-                query = query.filter(ScoreSubmission.tenant_id == UUID(scope.tenant_id))
         if court_id is not None:
             query = query.filter(ScoreSubmission.court_id == court_id)
         if event_id is not None:

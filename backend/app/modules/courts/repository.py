@@ -22,8 +22,6 @@ class CourtRepository:
         if scope is not None:
             if scope.court_id:
                 query = query.filter(Court.id == UUID(scope.court_id))
-            elif scope.tenant_id:
-                query = query.filter(Court.tenant_id == UUID(scope.tenant_id))
         if status is not None:
             query = query.filter(Court.status == status)
         return query.order_by(Court.name.asc()).offset(offset).limit(limit).all()

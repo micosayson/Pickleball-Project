@@ -14,12 +14,6 @@ class CourtStaff(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "court_staff"
     __table_args__ = (UniqueConstraint("court_id", "user_id", name="uq_court_staff_court_user"),)
 
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
     court_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),

@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import Depends, Header, HTTPException, status
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.core.permissions import Role
@@ -11,7 +12,6 @@ from app.modules.auth.schemas import AuthMeRead
 from app.modules.court_memberships.models import CourtMembership
 from app.modules.court_staff.models import CourtStaff
 from app.modules.courts.models import Court
-from app.modules.tenants.models import Tenant
 from app.modules.users.repository import UserRepository
 
 
@@ -29,88 +29,93 @@ def get_tenant_context(
     principal: Principal = Depends(get_current_principal),
     db: Session = Depends(get_db),
 ) -> TenantContext:
+    requested_tenant_id = _normalize_uuid_header(x_tenant_id, "X-Tenant-ID")
+    requested_court_id = _normalize_uuid_header(x_court_id, "X-Court-ID")
     user = UserRepository(db).get_by_supabase_user_id(principal.user_id)
-    if user is None:
+    if requested_tenant_id is not None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User profile not found; sync the authenticated user first",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Tenant scope requires the tenant schema migration",
+        )
+    if user is None:
+        if requested_court_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found; sync the authenticated user first",
+            )
+        return TenantContext(
+            user_id=principal.user_id,
+            platform_role=principal.platform_role,
         )
 
     is_platform_admin = principal.platform_role == Role.PLATFORM_ADMIN.value
-    requested_tenant_id = _normalize_uuid_header(x_tenant_id, "X-Tenant-ID")
-    requested_court_id = _normalize_uuid_header(x_court_id, "X-Court-ID")
 
-    if is_platform_admin:
-        tenant_id = requested_tenant_id
-        if requested_court_id is not None and tenant_id is None:
-            court = db.get(Court, UUID(requested_court_id))
-            tenant_id = str(court.tenant_id) if court is not None else None
+    try:
+        return _resolve_database_tenant_context(
+            db=db,
+            principal=principal,
+            user=user,
+            is_platform_admin=is_platform_admin,
+            requested_tenant_id=requested_tenant_id,
+            requested_court_id=requested_court_id,
+        )
+    except ProgrammingError:
+        db.rollback()
+        if requested_tenant_id is not None or requested_court_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Tenant schema is not available in the database",
+            )
         return TenantContext(
-            tenant_id=tenant_id,
+            user_id=principal.user_id,
+            backend_user_id=str(user.id),
+            platform_role=principal.platform_role,
+        )
+
+
+def _resolve_database_tenant_context(
+    *,
+    db: Session,
+    principal: Principal,
+    user,
+    is_platform_admin: bool,
+    requested_tenant_id: str | None,
+    requested_court_id: str | None,
+) -> TenantContext:
+    if is_platform_admin:
+        return TenantContext(
             court_id=requested_court_id,
             user_id=principal.user_id,
             backend_user_id=str(user.id),
             platform_role=principal.platform_role,
         )
 
-    owned_tenant_ids = {
-        str(row[0])
-        for row in db.query(Tenant.id)
-        .filter(Tenant.owner_user_id == user.id)
-        .all()
-    }
-
-    owned_courts = db.query(Court.id, Court.tenant_id).filter(Court.owner_user_id == user.id).all()
-    tenant_owned_courts = []
-    if owned_tenant_ids:
-        tenant_owned_courts = (
-            db.query(Court.id, Court.tenant_id)
-            .filter(Court.tenant_id.in_([UUID(value) for value in owned_tenant_ids]))
-            .all()
-        )
-
+    owned_courts = db.query(Court.id).filter(Court.owner_user_id == user.id).all()
     staff_courts = (
-        db.query(CourtStaff.court_id, Court.tenant_id)
+        db.query(CourtStaff.court_id)
         .join(Court, Court.id == CourtStaff.court_id)
         .filter(CourtStaff.user_id == user.id, CourtStaff.status == "active")
         .all()
     )
     member_courts = (
-        db.query(CourtMembership.court_id, Court.tenant_id)
+        db.query(CourtMembership.court_id)
         .join(Court, Court.id == CourtMembership.court_id)
         .filter(CourtMembership.user_id == user.id, CourtMembership.status == "active")
         .all()
     )
 
-    allowed_court_ids = {str(row[0]) for row in [*owned_courts, *tenant_owned_courts, *staff_courts, *member_courts]}
-    allowed_tenant_ids = {
-        *owned_tenant_ids,
-        *(str(row[1]) for row in [*owned_courts, *tenant_owned_courts, *staff_courts, *member_courts]),
-    }
-
-    if requested_tenant_id is not None and requested_tenant_id not in allowed_tenant_ids:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tenant scope is not available to the current user",
-        )
+    allowed_court_ids = {str(row[0]) for row in [*owned_courts, *staff_courts, *member_courts]}
     if requested_court_id is not None and requested_court_id not in allowed_court_ids:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Court scope is not available to the current user",
         )
 
-    tenant_id = requested_tenant_id
-    if requested_court_id is not None:
-        court = db.get(Court, UUID(requested_court_id))
-        tenant_id = str(court.tenant_id) if court is not None else tenant_id
-
     return TenantContext(
-        tenant_id=tenant_id,
         court_id=requested_court_id,
         user_id=principal.user_id,
         backend_user_id=str(user.id),
         platform_role=principal.platform_role,
-        allowed_tenant_ids=tuple(sorted(allowed_tenant_ids)),
         allowed_court_ids=tuple(sorted(allowed_court_ids)),
     )
 

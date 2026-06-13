@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from app.db import models as _models  # noqa: F401
 from app.core.tenancy import TenantContext
 from app.modules.courts.service import CourtService
+from app.modules.event_registrations.service import EventRegistrationService
 from app.modules.events.schemas import EventUpdate
 from app.modules.events.service import EventService
 from app.modules.matches.schemas import MatchUpdate
@@ -44,6 +45,34 @@ class FakeRepository:
 
     def delete(self, item):
         self.item = None
+
+
+class FakeEventRegistrationRepository:
+    def __init__(self, event=None, registration=None):
+        self.event = event
+        self.registration = registration
+        self.created_item = None
+        self.updated_values = None
+
+    def list_for_user(self, scope, *, user_id, limit=50, offset=0):
+        return []
+
+    def get_event(self, event_id, scope):
+        return self.event
+
+    def get_for_event_user(self, event_id, user_id):
+        return self.registration
+
+    def create(self, registration):
+        self.created_item = registration
+        self.registration = registration
+        return registration
+
+    def update(self, registration, values):
+        self.updated_values = values
+        for key, value in values.items():
+            setattr(registration, key, value)
+        return registration
 
 
 def test_tenant_context_reports_scope():
@@ -107,6 +136,64 @@ def test_score_submission_service_passes_filters_to_repository():
     )
 
 
+def test_event_registration_join_creates_registration():
+    court_id = uuid4()
+    event_id = uuid4()
+    user_id = uuid4()
+    event = SimpleNamespace(
+        id=event_id,
+        court_id=court_id,
+        status="published",
+    )
+    repo = FakeEventRegistrationRepository(event=event)
+    service = EventRegistrationService(repo)
+
+    registration = service.join_event(
+        event_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert registration.court_id == court_id
+    assert registration.event_id == event_id
+    assert registration.user_id == user_id
+    assert registration.status == "registered"
+
+
+def test_event_registration_join_returns_existing_active_registration():
+    event_id = uuid4()
+    user_id = uuid4()
+    existing = SimpleNamespace(status="checked_in")
+    repo = FakeEventRegistrationRepository(
+        event=SimpleNamespace(id=event_id, court_id=uuid4(), status="in_progress"),
+        registration=existing,
+    )
+    service = EventRegistrationService(repo)
+
+    registration = service.join_event(
+        event_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert registration is existing
+    assert repo.created_item is None
+
+
+def test_event_registration_join_rejects_closed_event():
+    event_id = uuid4()
+    repo = FakeEventRegistrationRepository(
+        event=SimpleNamespace(id=event_id, court_id=uuid4(), status="completed"),
+    )
+    service = EventRegistrationService(repo)
+
+    with pytest.raises(HTTPException) as exc:
+        service.join_event(
+            event_id,
+            TenantContext(backend_user_id=str(uuid4())),
+        )
+
+    assert exc.value.status_code == 409
+
+
 def test_event_update_rejects_cross_court_change():
     repo = FakeRepository(SimpleNamespace(id=uuid4(), court_id=uuid4()))
     service = EventService(repo)
@@ -132,16 +219,14 @@ def test_match_update_rejects_cross_court_change():
 def test_rating_create_uses_court_scope_when_payload_omits_court():
     repo = FakeRepository()
     service = RatingService(repo)
-    tenant_id = uuid4()
     court_id = uuid4()
     payload = RatingCreate(user_id=uuid4())
 
     created = service.create_rating(
         payload,
-        TenantContext(tenant_id=str(tenant_id), court_id=str(court_id)),
+        TenantContext(court_id=str(court_id)),
     )
 
-    assert created.tenant_id == tenant_id
     assert created.court_id == court_id
 
 
@@ -158,7 +243,7 @@ def test_ranking_create_rejects_cross_court_scope():
     with pytest.raises(HTTPException) as exc:
         service.create_ranking(
             payload,
-            TenantContext(tenant_id=str(uuid4()), court_id=str(uuid4())),
+            TenantContext(court_id=str(uuid4())),
         )
 
     assert exc.value.status_code == 403

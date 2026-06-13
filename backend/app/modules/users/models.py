@@ -25,11 +25,6 @@ class User(UUIDPrimaryKeyMixin, AuditMixin, Base):
         back_populates="owner_user",
         foreign_keys="Court.owner_user_id",
     )
-    owned_tenants: Mapped[list["Tenant"]] = relationship(
-        "Tenant",
-        back_populates="owner_user",
-        foreign_keys="Tenant.owner_user_id",
-    )
     invitations_sent: Mapped[list["Invitation"]] = relationship(
         "Invitation",
         back_populates="invited_by_user",

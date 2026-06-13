@@ -6,6 +6,7 @@ import '../../../core/network/api_endpoints.dart';
 import '../../auth/pages/login_page.dart';
 import '../../auth/services/auth_service.dart';
 import '../../courts/services/court_service.dart';
+import '../../events/services/event_service.dart';
 import '../../scores/services/score_submission_service.dart';
 
 const _courtGreen = Color(0xFF315C3A);
@@ -25,6 +26,7 @@ class HomePlaceholderPage extends StatefulWidget {
 
 class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   late final Future<List<CourtSummary>> _courtsFuture;
+  late final Future<List<EventSummary>> _eventsFuture;
   late final Future<List<ScoreSubmissionSummary>> _scoresFuture;
   String _lastResult = 'Backend checks have not run yet.';
   bool _isLoading = false;
@@ -33,6 +35,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   void initState() {
     super.initState();
     _courtsFuture = const CourtService().listCourts();
+    _eventsFuture = const EventService().listEvents();
     _scoresFuture = const ScoreSubmissionService().listRecent();
   }
 
@@ -125,7 +128,9 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                                     fullName: fullName,
                                     user: user,
                                     courtsFuture: _courtsFuture,
+                                    eventsFuture: _eventsFuture,
                                     scoresFuture: _scoresFuture,
+                                    joinEvent: _joinEvent,
                                     runRequest: _runRequest,
                                   ),
                                 ),
@@ -141,7 +146,9 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                                   fullName: fullName,
                                   user: user,
                                   courtsFuture: _courtsFuture,
+                                  eventsFuture: _eventsFuture,
                                   scoresFuture: _scoresFuture,
+                                  joinEvent: _joinEvent,
                                   runRequest: _runRequest,
                                 ),
                                 const SizedBox(height: 16),
@@ -156,6 +163,13 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
           },
         ),
       ),
+    );
+  }
+
+  Future<void> _joinEvent(EventSummary event) {
+    return _runRequest(
+      () => const EventService().joinEvent(event.id),
+      'POST /event-registrations/${event.id}',
     );
   }
 }
@@ -224,7 +238,9 @@ class _MainColumn extends StatelessWidget {
     required this.fullName,
     required this.user,
     required this.courtsFuture,
+    required this.eventsFuture,
     required this.scoresFuture,
+    required this.joinEvent,
     required this.runRequest,
   });
 
@@ -233,7 +249,9 @@ class _MainColumn extends StatelessWidget {
   final String fullName;
   final User? user;
   final Future<List<CourtSummary>> courtsFuture;
+  final Future<List<EventSummary>> eventsFuture;
   final Future<List<ScoreSubmissionSummary>> scoresFuture;
+  final Future<void> Function(EventSummary) joinEvent;
   final Future<void> Function(Future<dynamic> Function(), String) runRequest;
 
   @override
@@ -245,6 +263,11 @@ class _MainColumn extends StatelessWidget {
         const _CourtDataStrip(),
         const SizedBox(height: 16),
         _CourtDiscoveryPanel(courtsFuture: courtsFuture),
+        const SizedBox(height: 16),
+        _EventDiscoveryPanel(
+          eventsFuture: eventsFuture,
+          onJoinEvent: joinEvent,
+        ),
         const SizedBox(height: 16),
         _RecentScoresPanel(scoresFuture: scoresFuture),
         const SizedBox(height: 16),
@@ -518,6 +541,140 @@ class _CourtTile extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           _StatusPill(label: court.status),
+        ],
+      ),
+    );
+  }
+}
+
+class _EventDiscoveryPanel extends StatelessWidget {
+  const _EventDiscoveryPanel({
+    required this.eventsFuture,
+    required this.onJoinEvent,
+  });
+
+  final Future<List<EventSummary>> eventsFuture;
+  final Future<void> Function(EventSummary) onJoinEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.event_available_rounded,
+            title: 'Open events',
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Join active sessions and move into match play from your event list.',
+            style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
+          ),
+          const SizedBox(height: 14),
+          FutureBuilder<List<EventSummary>>(
+            future: eventsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const _InlineLoadingState();
+              }
+              if (snapshot.hasError) {
+                return _CourtMessageState(
+                  icon: Icons.cloud_off_rounded,
+                  title: 'Events are unavailable',
+                  detail: 'Check the backend connection and try again.',
+                  color: _clay,
+                );
+              }
+
+              final events = snapshot.data ?? [];
+              if (events.isEmpty) {
+                return const _CourtMessageState(
+                  icon: Icons.event_busy_rounded,
+                  title: 'No events published yet',
+                  detail: 'Published sessions will appear here.',
+                  color: _courtGreen,
+                );
+              }
+
+              return Column(
+                children: [
+                  for (final event in events) ...[
+                    _EventTile(event: event, onJoin: () => onJoinEvent(event)),
+                    if (event != events.last) const SizedBox(height: 10),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EventTile extends StatelessWidget {
+  const _EventTile({required this.event, required this.onJoin});
+
+  final EventSummary event;
+  final VoidCallback onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = event.startAt.toLocal();
+    final timeLabel =
+        '${start.month}/${start.day} ${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
+    final typeLabel = event.eventType.replaceAll('_', ' ');
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _chalk,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _clay,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.event_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$timeLabel · $typeLabel',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _muted, fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          IconButton.filledTonal(
+            onPressed: onJoin,
+            tooltip: 'Join event',
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+          ),
         ],
       ),
     );
@@ -1199,6 +1356,17 @@ class _DeveloperChecks extends StatelessWidget {
                 onPressed: () => runRequest(
                   () => ApiClient.instance.get(ApiEndpoints.events),
                   'GET /events',
+                ),
+              ),
+              _CheckButton(
+                label: 'My events',
+                icon: Icons.event_seat_rounded,
+                isLoading: isLoading,
+                onPressed: () => runRequest(
+                  () => ApiClient.instance.get(
+                    '${ApiEndpoints.eventRegistrations}/me',
+                  ),
+                  'GET /event-registrations/me',
                 ),
               ),
               _CheckButton(

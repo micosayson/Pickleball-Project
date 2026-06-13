@@ -14,8 +14,6 @@ class RankingRepository:
         query = self.db.query(Ranking).filter(Ranking.deleted_at.is_(None))
         if scope.court_id:
             query = query.filter(Ranking.court_id == UUID(scope.court_id))
-        elif scope.tenant_id:
-            query = query.filter(Ranking.tenant_id == UUID(scope.tenant_id))
         return query
 
     def list(

@@ -13,14 +13,8 @@ from app.db.mixins import AuditMixin, UUIDPrimaryKeyMixin
 
 class Event(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "events"
-    __table_args__ = (UniqueConstraint("tenant_id", "court_id", "start_at", "name", name="uq_events_schedule"),)
+    __table_args__ = (UniqueConstraint("court_id", "start_at", "name", name="uq_events_schedule"),)
 
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
     court_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),

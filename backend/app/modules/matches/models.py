@@ -15,12 +15,6 @@ class Match(UUIDPrimaryKeyMixin, AuditMixin, Base):
     __tablename__ = "matches"
     __table_args__ = (UniqueConstraint("event_id", "match_number", name="uq_matches_event_match_number"),)
 
-    tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
     court_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("courts.id", ondelete="RESTRICT"),

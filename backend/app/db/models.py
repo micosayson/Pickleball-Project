@@ -1,4 +1,3 @@
-from app.modules.tenants.models import Tenant
 from app.modules.court_memberships.models import CourtMembership
 from app.modules.court_staff.models import CourtStaff
 from app.modules.courts.models import Court
@@ -15,7 +14,6 @@ from app.modules.users.models import User
 
 __all__ = [
     "User",
-    "Tenant",
     "Court",
     "CourtMembership",
     "CourtStaff",

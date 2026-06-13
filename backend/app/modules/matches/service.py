@@ -34,12 +34,7 @@ class MatchService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Match court does not match request court scope",
             )
-        if scope.tenant_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Match creation requires tenant scope",
-            )
-        return self.repository.create(Match(**payload.model_dump(), tenant_id=UUID(scope.tenant_id)))
+        return self.repository.create(Match(**payload.model_dump()))
 
     def update_match(self, match_id: UUID, payload: MatchUpdate, scope: TenantContext) -> Match:
         match = self.get_match(match_id, scope)

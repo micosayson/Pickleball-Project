@@ -14,8 +14,6 @@ class EventRepository:
         query = self.db.query(Event).filter(Event.deleted_at.is_(None))
         if scope.court_id:
             query = query.filter(Event.court_id == UUID(scope.court_id))
-        elif scope.tenant_id:
-            query = query.filter(Event.tenant_id == UUID(scope.tenant_id))
         return query
 
     def list(self, scope: TenantContext, *, limit: int = 50, offset: int = 0) -> list[Event]:

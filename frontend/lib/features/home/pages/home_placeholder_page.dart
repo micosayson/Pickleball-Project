@@ -390,37 +390,51 @@ class _CourtDataStrip extends StatelessWidget {
             title: 'Court data',
           ),
           const SizedBox(height: 14),
-          GridView.count(
-            crossAxisCount: MediaQuery.sizeOf(context).width >= 620 ? 4 : 2,
-            childAspectRatio: MediaQuery.sizeOf(context).width >= 620
-                ? 1.45
-                : 1.28,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: const [
-              _DataStatusTile(
-                icon: Icons.event_available_rounded,
-                label: 'Events',
-                detail: 'Open play',
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: _courtGreen,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: CustomPaint(
+              painter: const _CourtLinesPainter(),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: GridView.count(
+                  crossAxisCount: MediaQuery.sizeOf(context).width >= 620
+                      ? 4
+                      : 2,
+                  childAspectRatio: MediaQuery.sizeOf(context).width >= 620
+                      ? 1.35
+                      : 1.16,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: const [
+                    _DataStatusTile(
+                      icon: Icons.event_available_rounded,
+                      label: 'Events',
+                      detail: 'Open play',
+                    ),
+                    _DataStatusTile(
+                      icon: Icons.sports_score_rounded,
+                      label: 'Matches',
+                      detail: 'Scores',
+                    ),
+                    _DataStatusTile(
+                      icon: Icons.speed_rounded,
+                      label: 'Ratings',
+                      detail: 'Player form',
+                    ),
+                    _DataStatusTile(
+                      icon: Icons.leaderboard_rounded,
+                      label: 'Rankings',
+                      detail: 'Court ladder',
+                    ),
+                  ],
+                ),
               ),
-              _DataStatusTile(
-                icon: Icons.sports_score_rounded,
-                label: 'Matches',
-                detail: 'Scores',
-              ),
-              _DataStatusTile(
-                icon: Icons.speed_rounded,
-                label: 'Ratings',
-                detail: 'Player form',
-              ),
-              _DataStatusTile(
-                icon: Icons.leaderboard_rounded,
-                label: 'Rankings',
-                detail: 'Court ladder',
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -443,9 +457,9 @@ class _DataStatusTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: _chalk,
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _line),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -481,6 +495,46 @@ class _DataStatusTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CourtLinesPainter extends CustomPainter {
+  const _CourtLinesPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.22)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final outer = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(8),
+    );
+    canvas.drawRRect(outer.deflate(14), paint);
+    canvas.drawLine(
+      Offset(size.width / 2, 14),
+      Offset(size.width / 2, size.height - 14),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(14, size.height / 2),
+      Offset(size.width - 14, size.height / 2),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.25, 14),
+      Offset(size.width * 0.25, size.height - 14),
+      paint..color = Colors.white.withValues(alpha: 0.14),
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.75, 14),
+      Offset(size.width * 0.75, size.height - 14),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ActionTile extends StatelessWidget {
@@ -768,12 +822,17 @@ class _DeveloperChecks extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: _line),
             ),
-            child: Text(
-              lastResult,
-              style: const TextStyle(
-                color: _muted,
-                fontSize: 12.5,
-                height: 1.35,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 150),
+              child: SingleChildScrollView(
+                child: Text(
+                  lastResult,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12.5,
+                    height: 1.35,
+                  ),
+                ),
               ),
             ),
           ),

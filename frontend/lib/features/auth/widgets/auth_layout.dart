@@ -111,6 +111,52 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
   bool get _isRateLimited =>
       _retryAfter != null && DateTime.now().isBefore(_retryAfter!);
 
+  Future<void> _submit() async {
+    if (_isLoading || _isRateLimited || !_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final response = await _authService.signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      debugPrint('Login completed. session=${response.session != null}');
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomePlaceholderPage()),
+        (route) => false,
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_friendlyAuthError(e.message)),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      if (e.message.contains('Too Many Requests') ||
+          e.message.contains('429')) {
+        setState(() {
+          _retryAfter = DateTime.now().add(const Duration(seconds: 30));
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not log in. Check your connection and try again.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -138,6 +184,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
           const SizedBox(height: 8.0),
           TextFormField(
             controller: _emailController,
+            autofillHints: const [AutofillHints.email],
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
@@ -151,10 +198,10 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               filled: true,
               fillColor: const Color(0xFFF2F5F2),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.0),
+                borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -186,8 +233,10 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
           const SizedBox(height: 8.0),
           TextFormField(
             controller: _passwordController,
+            autofillHints: const [AutofillHints.password],
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _submit(),
             decoration: InputDecoration(
               hintText: 'Enter password',
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
@@ -213,10 +262,10 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               filled: true,
               fillColor: const Color(0xFFF2F5F2),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.0),
+                borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -228,66 +277,18 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               return null;
             },
           ),
-          const SizedBox(height: 28.0),
+          const SizedBox(height: 22.0),
 
           // Login Button
           SizedBox(
             height: 56.0,
             child: ElevatedButton(
-              onPressed: canSubmit
-                  ? () async {
-                      if (_formKey.currentState!.validate()) {
-                        setState(() => _isLoading = true);
-                        try {
-                          final response = await _authService.signIn(
-                            email: _emailController.text.trim(),
-                            password: _passwordController.text,
-                          );
-                          if (!context.mounted) return;
-                          debugPrint(
-                            'Login completed. session=${response.session != null}',
-                          );
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (_) => const HomePlaceholderPage(),
-                            ),
-                            (route) => false,
-                          );
-                        } on AuthException catch (e) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(_friendlyAuthError(e.message)),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                          if (e.message.contains('Too Many Requests') ||
-                              e.message.contains('429')) {
-                            setState(() {
-                              _retryAfter = DateTime.now().add(
-                                const Duration(seconds: 30),
-                              );
-                            });
-                          }
-                        } catch (e) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('An unexpected error occurred.'),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                        } finally {
-                          if (mounted) setState(() => _isLoading = false);
-                        }
-                      }
-                    }
-                  : null,
+              onPressed: canSubmit ? _submit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F6F52),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.0),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
                 elevation: 2.0,
                 shadowColor: const Color(0xFF4F6F52).withValues(alpha: 0.4),
@@ -358,6 +359,65 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
   bool get _isRateLimited =>
       _retryAfter != null && DateTime.now().isBefore(_retryAfter!);
 
+  Future<void> _submit() async {
+    if (_isLoading || _isRateLimited || !_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final response = await _authService.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        fullName: _nameController.text.trim(),
+      );
+      if (!mounted) return;
+      debugPrint('Signup completed. session=${response.session != null}');
+      if (response.session != null) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomePlaceholderPage()),
+          (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created. Confirm your email, then log in.'),
+            duration: Duration(seconds: 5),
+            backgroundColor: Color(0xFF4F6F52),
+          ),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
+      }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_friendlyAuthError(e.message)),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      if (e.message.contains('Too Many Requests') ||
+          e.message.contains('429')) {
+        setState(() {
+          _retryAfter = DateTime.now().add(const Duration(seconds: 30));
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not create the account. Try again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -387,6 +447,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           const SizedBox(height: 8.0),
           TextFormField(
             controller: _nameController,
+            autofillHints: const [AutofillHints.name],
             keyboardType: TextInputType.name,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
@@ -400,10 +461,10 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               filled: true,
               fillColor: const Color(0xFFF2F5F2),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.0),
+                borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -426,6 +487,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           const SizedBox(height: 8.0),
           TextFormField(
             controller: _emailController,
+            autofillHints: const [AutofillHints.email],
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
@@ -439,10 +501,10 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               filled: true,
               fillColor: const Color(0xFFF2F5F2),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.0),
+                borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -468,6 +530,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           const SizedBox(height: 8.0),
           TextFormField(
             controller: _passwordController,
+            autofillHints: const [AutofillHints.newPassword],
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
@@ -495,10 +558,10 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               filled: true,
               fillColor: const Color(0xFFF2F5F2),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.0),
+                borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -524,8 +587,10 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           const SizedBox(height: 8.0),
           TextFormField(
             controller: _confirmPasswordController,
+            autofillHints: const [AutofillHints.newPassword],
             obscureText: _obscureConfirmPassword,
             textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _submit(),
             decoration: InputDecoration(
               hintText: 'Confirm password',
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
@@ -551,10 +616,10 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               filled: true,
               fillColor: const Color(0xFFF2F5F2),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.0),
+                borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -566,85 +631,18 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               return null;
             },
           ),
-          const SizedBox(height: 28.0),
+          const SizedBox(height: 22.0),
 
           // Register Button
           SizedBox(
             height: 56.0,
             child: ElevatedButton(
-              onPressed: canSubmit
-                  ? () async {
-                      if (_formKey.currentState!.validate()) {
-                        setState(() => _isLoading = true);
-                        try {
-                          final response = await _authService.signUp(
-                            email: _emailController.text.trim(),
-                            password: _passwordController.text,
-                            fullName: _nameController.text.trim(),
-                          );
-                          if (!context.mounted) return;
-                          debugPrint(
-                            'Signup completed. session=${response.session != null}',
-                          );
-                          if (response.session != null) {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (_) => const HomePlaceholderPage(),
-                              ),
-                              (route) => false,
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Account created! Please check your email to confirm, then log in.',
-                                ),
-                                duration: Duration(seconds: 5),
-                                backgroundColor: Color(0xFF4F6F52),
-                              ),
-                            );
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (_) => const LoginPage(),
-                              ),
-                              (route) => false,
-                            );
-                          }
-                        } on AuthException catch (e) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(_friendlyAuthError(e.message)),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                          if (e.message.contains('Too Many Requests') ||
-                              e.message.contains('429')) {
-                            setState(() {
-                              _retryAfter = DateTime.now().add(
-                                const Duration(seconds: 30),
-                              );
-                            });
-                          }
-                        } catch (e) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('An unexpected error occurred.'),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                        } finally {
-                          if (mounted) setState(() => _isLoading = false);
-                        }
-                      }
-                    }
-                  : null,
+              onPressed: canSubmit ? _submit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F6F52),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.0),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
                 elevation: 2.0,
                 shadowColor: const Color(0xFF4F6F52).withValues(alpha: 0.4),

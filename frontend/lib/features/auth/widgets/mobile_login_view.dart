@@ -7,12 +7,13 @@ class MobileLoginView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final topImageHeight = size.height * 0.35;
+    final topImageHeight = size.height * 0.28;
 
     return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Column(
         children: [
-          // Top Image Section (35% height)
           Stack(
             children: [
               SizedBox(
@@ -61,9 +62,8 @@ class MobileLoginView extends StatelessWidget {
               ),
             ],
           ),
-          // Bottom overlapping card
           Transform.translate(
-            offset: const Offset(0, -32.0),
+            offset: const Offset(0, -20.0),
             child: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -76,22 +76,22 @@ class MobileLoginView extends StatelessWidget {
                 padding: EdgeInsets.only(
                   left: 24.0,
                   right: 24.0,
-                  top: 32.0,
-                  bottom: 40.0,
+                  top: 24.0,
+                  bottom: 32.0,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     AuthHeader(
                       isDesktop: false,
-                      title: 'Welcome Back!',
+                      title: 'Welcome back',
                       subtitle: 'Log in to keep the rally going.',
                     ),
-                    SizedBox(height: 28.0),
+                    SizedBox(height: 22.0),
                     AuthLoginForm(),
-                    SizedBox(height: 24.0),
+                    SizedBox(height: 18.0),
                     SocialLogins(),
-                    SizedBox(height: 28.0),
+                    SizedBox(height: 22.0),
                     AuthRegisterFooter(),
                   ],
                 ),

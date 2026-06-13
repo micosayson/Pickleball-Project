@@ -28,8 +28,11 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   late final Future<List<CourtSummary>> _courtsFuture;
   CourtSummary? _selectedCourt;
   Future<List<EventSummary>>? _courtEventsFuture;
+  EventSummary? _activeSession;
+  EventRegistrationSummary? _activeRegistration;
   String _lastResult = 'Backend checks have not run yet.';
   bool _isLoading = false;
+  bool _matchFinished = false;
   int _selectedIndex = 0;
 
   @override
@@ -83,7 +86,11 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                 fullName: fullName,
                 selectedCourt: _selectedCourt,
                 courtEventsFuture: _courtEventsFuture,
+                activeSession: _activeSession,
+                activeRegistration: _activeRegistration,
+                matchFinished: _matchFinished,
                 joinLobby: _joinLobby,
+                onMatchFinished: _markMatchFinished,
                 onOpenCourts: () => setState(() => _selectedIndex = 1),
               ),
               1 => _CourtsTab(
@@ -176,10 +183,24 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   }
 
   Future<void> _joinLobby(EventSummary event) {
-    return _runRequest(
-      () => const EventService().joinLobby(event.id),
-      'Join lobby',
-    );
+    return _runRequest(() async {
+      final registration = await const EventService().joinLobby(event.id);
+      if (mounted) {
+        setState(() {
+          _activeSession = event;
+          _activeRegistration = registration;
+          _matchFinished = false;
+        });
+      }
+      return registration;
+    }, 'Join lobby');
+  }
+
+  void _markMatchFinished() {
+    setState(() {
+      _matchFinished = true;
+      _lastResult = 'Match #102 marked finished. Waiting for verification.';
+    });
   }
 
   Future<void> _selectCourt(CourtSummary court) {
@@ -194,6 +215,9 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
             limit: 12,
             courtId: court.id,
           );
+          _activeSession = null;
+          _activeRegistration = null;
+          _matchFinished = false;
           _selectedIndex = 0;
         });
       }
@@ -207,14 +231,22 @@ class _PlayTab extends StatelessWidget {
     required this.fullName,
     required this.selectedCourt,
     required this.courtEventsFuture,
+    required this.activeSession,
+    required this.activeRegistration,
+    required this.matchFinished,
     required this.joinLobby,
+    required this.onMatchFinished,
     required this.onOpenCourts,
   });
 
   final String fullName;
   final CourtSummary? selectedCourt;
   final Future<List<EventSummary>>? courtEventsFuture;
+  final EventSummary? activeSession;
+  final EventRegistrationSummary? activeRegistration;
+  final bool matchFinished;
   final Future<void> Function(EventSummary) joinLobby;
+  final VoidCallback onMatchFinished;
   final VoidCallback onOpenCourts;
 
   @override
@@ -223,7 +255,11 @@ class _PlayTab extends StatelessWidget {
       fullName: fullName,
       selectedCourt: selectedCourt,
       courtEventsFuture: courtEventsFuture,
+      activeSession: activeSession,
+      activeRegistration: activeRegistration,
+      matchFinished: matchFinished,
       joinLobby: joinLobby,
+      onMatchFinished: onMatchFinished,
       onOpenCourts: onOpenCourts,
     );
   }
@@ -485,14 +521,22 @@ class _MainColumn extends StatelessWidget {
     required this.fullName,
     required this.selectedCourt,
     required this.courtEventsFuture,
+    required this.activeSession,
+    required this.activeRegistration,
+    required this.matchFinished,
     required this.joinLobby,
+    required this.onMatchFinished,
     required this.onOpenCourts,
   });
 
   final String fullName;
   final CourtSummary? selectedCourt;
   final Future<List<EventSummary>>? courtEventsFuture;
+  final EventSummary? activeSession;
+  final EventRegistrationSummary? activeRegistration;
+  final bool matchFinished;
   final Future<void> Function(EventSummary) joinLobby;
+  final VoidCallback onMatchFinished;
   final VoidCallback onOpenCourts;
 
   @override
@@ -503,11 +547,19 @@ class _MainColumn extends StatelessWidget {
         const SizedBox(height: 16),
         if (selectedCourt == null || courtEventsFuture == null)
           _SelectCourtFirstPanel(onOpenCourts: onOpenCourts)
-        else
+        else if (activeSession == null)
           _EventDiscoveryPanel(
             court: selectedCourt!,
             eventsFuture: courtEventsFuture!,
             onJoinLobby: joinLobby,
+          )
+        else
+          _CheckedInSessionPanel(
+            court: selectedCourt!,
+            session: activeSession!,
+            registration: activeRegistration,
+            matchFinished: matchFinished,
+            onMatchFinished: onMatchFinished,
           ),
       ],
     );
@@ -762,57 +814,169 @@ class _EventDiscoveryPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
+    return Column(
+      children: [
+        _Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SectionTitle(
+                icon: Icons.event_available_rounded,
+                title: '${court.name} sessions',
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Join a session when you are ready to check in and enter the automatic match queue.',
+                style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
+              ),
+              const SizedBox(height: 14),
+              FutureBuilder<List<EventSummary>>(
+                future: eventsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const _InlineLoadingState();
+                  }
+                  if (snapshot.hasError) {
+                    return _CourtMessageState(
+                      icon: Icons.cloud_off_rounded,
+                      title: 'Events are unavailable',
+                      detail: 'Check the backend connection and try again.',
+                      color: _clay,
+                    );
+                  }
+
+                  final events = snapshot.data ?? [];
+                  if (events.isEmpty) {
+                    return const _CourtMessageState(
+                      icon: Icons.event_busy_rounded,
+                      title: 'No sessions for this court',
+                      detail: 'Court sessions will appear here when available.',
+                      color: _courtGreen,
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      for (final event in events) ...[
+                        _SessionDetailsCard(
+                          court: court,
+                          event: event,
+                          onJoinLobby: () => onJoinLobby(event),
+                        ),
+                        if (event != events.last) const SizedBox(height: 12),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SessionDetailsCard extends StatelessWidget {
+  const _SessionDetailsCard({
+    required this.court,
+    required this.event,
+    required this.onJoinLobby,
+  });
+
+  final CourtSummary court;
+  final EventSummary event;
+  final VoidCallback onJoinLobby;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionTitle(
-            icon: Icons.event_available_rounded,
-            title: '${court.name} lobby',
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Join a session lobby to confirm you are at this court and ready for upcoming matches.',
-            style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
-          ),
-          const SizedBox(height: 14),
-          FutureBuilder<List<EventSummary>>(
-            future: eventsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const _InlineLoadingState();
-              }
-              if (snapshot.hasError) {
-                return _CourtMessageState(
-                  icon: Icons.cloud_off_rounded,
-                  title: 'Events are unavailable',
-                  detail: 'Check the backend connection and try again.',
-                  color: _clay,
-                );
-              }
-
-              final events = snapshot.data ?? [];
-              if (events.isEmpty) {
-                return const _CourtMessageState(
-                  icon: Icons.event_busy_rounded,
-                  title: 'No sessions for this court',
-                  detail: 'Court sessions will appear here when available.',
-                  color: _courtGreen,
-                );
-              }
-
-              return Column(
-                children: [
-                  for (final event in events) ...[
-                    _EventTile(
-                      event: event,
-                      onJoinLobby: () => onJoinLobby(event),
+          _SessionBanner(event: event),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            child: Column(
+              children: [
+                _SessionMetaRow(
+                  icon: Icons.schedule_rounded,
+                  text: _formatTimeRange(event.startAt, event.endAt),
+                ),
+                _SessionMetaRow(
+                  icon: Icons.location_on_rounded,
+                  text: court.name,
+                ),
+                const _SessionMetaRow(
+                  icon: Icons.payments_rounded,
+                  text: 'Payment verified before check-in',
+                ),
+                _SessionMetaRow(
+                  icon: Icons.sports_tennis_rounded,
+                  text: _eventTypeLabel(event.eventType),
+                ),
+                _SessionMetaRow(
+                  icon: Icons.groups_rounded,
+                  text: event.capacity == null
+                      ? 'Open player capacity'
+                      : '${event.capacity} player capacity',
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: onJoinLobby,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _freshGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    if (event != events.last) const SizedBox(height: 10),
-                  ],
-                ],
-              );
-            },
+                    child: const Text('Join lobby'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _chalk,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _line),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Session info',
+                        style: TextStyle(
+                          color: _ink,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Check in at the court to enter the queue. The system will notify you when your match is ready.',
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: 12.5,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -820,72 +984,653 @@ class _EventDiscoveryPanel extends StatelessWidget {
   }
 }
 
-class _EventTile extends StatelessWidget {
-  const _EventTile({required this.event, required this.onJoinLobby});
+class _SessionBanner extends StatelessWidget {
+  const _SessionBanner({required this.event});
 
   final EventSummary event;
-  final VoidCallback onJoinLobby;
 
   @override
   Widget build(BuildContext context) {
-    final start = event.startAt.toLocal();
-    final timeLabel =
-        '${start.month}/${start.day} ${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
-    final typeLabel = event.eventType.replaceAll('_', ' ');
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _chalk,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _line),
+      height: 98,
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_ink, _courtGreen],
+        ),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: _clay,
-              borderRadius: BorderRadius.circular(8),
+          Positioned(
+            right: -20,
+            bottom: -34,
+            child: Icon(
+              Icons.sports_tennis_rounded,
+              color: Colors.white.withValues(alpha: 0.12),
+              size: 124,
             ),
-            child: const Icon(Icons.event_rounded, color: Colors.white),
           ),
-          const SizedBox(width: 12),
-          Expanded(
+          Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                event.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  height: 1.05,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _freshGreen,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  event.status.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CheckedInSessionPanel extends StatelessWidget {
+  const _CheckedInSessionPanel({
+    required this.court,
+    required this.session,
+    required this.registration,
+    required this.matchFinished,
+    required this.onMatchFinished,
+  });
+
+  final CourtSummary court;
+  final EventSummary session;
+  final EventRegistrationSummary? registration;
+  final bool matchFinished;
+  final VoidCallback onMatchFinished;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _MySessionCard(
+          court: court,
+          session: session,
+          registration: registration,
+        ),
+        const SizedBox(height: 16),
+        _UpcomingMatchCard(court: court),
+        const SizedBox(height: 16),
+        _MatchResultCard(
+          court: court,
+          matchFinished: matchFinished,
+          onMatchFinished: onMatchFinished,
+        ),
+      ],
+    );
+  }
+}
+
+class _MySessionCard extends StatelessWidget {
+  const _MySessionCard({
+    required this.court,
+    required this.session,
+    required this.registration,
+  });
+
+  final CourtSummary court;
+  final EventSummary session;
+  final EventRegistrationSummary? registration;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = registration?.status.replaceAll('_', ' ') ?? 'checked in';
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.fact_check_rounded,
+            title: 'My session',
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F6FF),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFD8E5FF)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  event.name,
+                  session.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _ink,
-                    fontSize: 15,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$timeLabel - $typeLabel',
+                  _formatTimeRange(session.startAt, session.endAt),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: _muted, fontSize: 12.5),
                 ),
+                const SizedBox(height: 5),
+                Text.rich(
+                  TextSpan(
+                    text: 'Status: ',
+                    style: const TextStyle(color: _muted, fontSize: 12.5),
+                    children: [
+                      TextSpan(
+                        text: _titleCase(status),
+                        style: const TextStyle(
+                          color: _freshGreen,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          const Row(
+            children: [
+              Expanded(
+                child: _SessionStep(
+                  icon: Icons.person_add_alt_1_rounded,
+                  label: 'Joined',
+                  active: false,
+                ),
+              ),
+              Expanded(
+                child: _SessionStep(
+                  icon: Icons.payments_rounded,
+                  label: 'Paid',
+                  active: false,
+                ),
+              ),
+              Expanded(
+                child: _SessionStep(
+                  icon: Icons.check_rounded,
+                  label: 'Checked in',
+                  active: true,
+                ),
+              ),
+              Expanded(
+                child: _SessionStep(
+                  icon: Icons.groups_rounded,
+                  label: 'Playing',
+                  active: false,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F6FF),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFD8E5FF)),
+            ),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.notifications_active_rounded,
+                  color: _freshGreen,
+                  size: 34,
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  "You're in the queue",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'You will be notified when your match at ${court.name} is ready.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12.5,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionStep extends StatelessWidget {
+  const _SessionStep({
+    required this.icon,
+    required this.label,
+    required this.active,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? _freshGreen : const Color(0xFF9AA8A0);
+    return Column(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: active ? color : Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: active ? color : _line),
+          ),
+          child: Icon(icon, color: active ? Colors.white : color, size: 18),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: active ? _ink : _muted,
+            fontSize: 10.5,
+            fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _UpcomingMatchCard extends StatelessWidget {
+  const _UpcomingMatchCard({required this.court});
+
+  final CourtSummary court;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.sports_score_rounded,
+            title: 'Upcoming match',
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Your match is ready',
+            style: TextStyle(
+              color: _ink,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            '${court.name} - Match #102',
+            style: const TextStyle(color: _muted, fontSize: 12.5),
+          ),
+          const SizedBox(height: 16),
+          const _TeamCard(
+            name: 'Team A',
+            color: Color(0xFF3B82F6),
+            tint: Color(0xFFF1F6FF),
+            border: Color(0xFFD8E5FF),
+            players: [
+              _MatchPlayer(name: 'Mico Santos', rating: '3.20'),
+              _MatchPlayer(name: 'John Reyes', rating: '3.15'),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Center(
+              child: Text(
+                'VS',
+                style: TextStyle(
+                  color: _ink,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          const _TeamCard(
+            name: 'Team B',
+            color: Color(0xFFE43F5A),
+            tint: Color(0xFFFFF1F4),
+            border: Color(0xFFF9D7DF),
+            players: [
+              _MatchPlayer(name: 'Anna Garcia', rating: '3.25'),
+              _MatchPlayer(name: 'Kyle Wong', rating: '3.10'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () {},
+              style: FilledButton.styleFrom(
+                backgroundColor: _freshGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Go to court'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MatchResultCard extends StatelessWidget {
+  const _MatchResultCard({
+    required this.court,
+    required this.matchFinished,
+    required this.onMatchFinished,
+  });
+
+  final CourtSummary court;
+  final bool matchFinished;
+  final VoidCallback onMatchFinished;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.task_alt_rounded,
+            title: 'Match result',
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Match #102',
+            style: TextStyle(
+              color: _ink,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            court.name,
+            style: const TextStyle(color: _muted, fontSize: 12.5),
+          ),
+          const Divider(height: 28, color: _line),
+          const Center(
+            child: Text(
+              'Team A',
+              style: TextStyle(
+                color: _ink,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Center(child: _ScoreBox(score: '11')),
+          const SizedBox(height: 12),
+          const Center(
+            child: Text(
+              'VS',
+              style: TextStyle(
+                color: _muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Center(
+            child: Text(
+              'Team B',
+              style: TextStyle(
+                color: _ink,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Center(child: _ScoreBox(score: '7')),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: matchFinished ? null : onMatchFinished,
+              style: FilledButton.styleFrom(
+                backgroundColor: _freshGreen,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: _freshGreen.withValues(alpha: 0.5),
+                disabledForegroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Match finished'),
+            ),
+          ),
+          if (matchFinished) ...[
+            const SizedBox(height: 10),
+            const Center(
+              child: Text(
+                'Waiting for queue master verification',
+                style: TextStyle(
+                  color: _muted,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamCard extends StatelessWidget {
+  const _TeamCard({
+    required this.name,
+    required this.color,
+    required this.tint,
+    required this.border,
+    required this.players,
+  });
+
+  final String name;
+  final Color color;
+  final Color tint;
+  final Color border;
+  final List<_MatchPlayer> players;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tint,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name,
+            style: TextStyle(
+              color: color,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (final player in players) ...[
+            _PlayerLine(player: player),
+            if (player != players.last) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PlayerLine extends StatelessWidget {
+  const _PlayerLine({required this.player});
+
+  final _MatchPlayer player;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 14,
+          backgroundColor: _courtGreen,
+          child: Text(
+            player.name.characters.first,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            player.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Text(
+          player.rating,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MatchPlayer {
+  const _MatchPlayer({required this.name, required this.rating});
+
+  final String name;
+  final String rating;
+}
+
+class _ScoreBox extends StatelessWidget {
+  const _ScoreBox({required this.score});
+
+  final String score;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 64,
+      height: 64,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+        boxShadow: [
+          BoxShadow(
+            color: _ink.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Text(
+        score,
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 30,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionMetaRow extends StatelessWidget {
+  const _SessionMetaRow({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, color: _ink, size: 18),
           const SizedBox(width: 10),
-          FilledButton.icon(
-            onPressed: onJoinLobby,
-            icon: const Icon(Icons.login_rounded, size: 18),
-            label: const Text('Join lobby'),
-            style: FilledButton.styleFrom(
-              backgroundColor: _ink,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -893,6 +1638,32 @@ class _EventTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatTimeRange(DateTime startAt, DateTime endAt) {
+  return '${_formatClock(startAt.toLocal())} - ${_formatClock(endAt.toLocal())}';
+}
+
+String _formatClock(DateTime value) {
+  final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
+  final minute = value.minute.toString().padLeft(2, '0');
+  final suffix = value.hour >= 12 ? 'PM' : 'AM';
+  return '$hour:$minute $suffix';
+}
+
+String _eventTypeLabel(String eventType) {
+  return _titleCase(eventType.replaceAll('_', ' '));
+}
+
+String _titleCase(String value) {
+  return value
+      .split(' ')
+      .where((word) => word.trim().isNotEmpty)
+      .map((word) {
+        final lower = word.toLowerCase();
+        return '${lower[0].toUpperCase()}${lower.substring(1)}';
+      })
+      .join(' ');
 }
 
 class _CourtLoadingState extends StatelessWidget {

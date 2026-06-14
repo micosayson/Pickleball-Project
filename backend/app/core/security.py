@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Mapping, Optional, cast
 
 from fastapi import Header, HTTPException, Depends, status
@@ -5,6 +6,17 @@ from app.integrations.supabase.client import supabase
 from app.modules.auth.schemas import AuthMeRead
 from app.modules.auth.repository import AuthRepository
 from app.core.permissions import Role
+
+
+@dataclass(slots=True)
+class Principal:
+    user_id: str
+    email: str | None = None
+    platform_role: str | None = None
+
+    @property
+    def is_platform_admin(self) -> bool:
+        return self.platform_role == Role.PLATFORM_ADMIN.value
 
 
 async def get_current_token(authorization: str = Header(...)):

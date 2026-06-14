@@ -10,10 +10,18 @@ class ApiEndpoints {
 
   static const String courts = '/courts';
   static String court(String id) => '/courts/$id';
+  static const String courtMemberships = '/court-memberships';
+  static String courtMembership(String courtId) =>
+      '/court-memberships/$courtId';
 
   static const String events = '/events';
   static String event(String id) => '/events/$id';
   static String eventParticipants(String id) => '/events/$id/participants';
+  static const String eventRegistrations = '/event-registrations';
+  static String eventRegistration(String eventId) =>
+      '/event-registrations/$eventId';
+  static String eventCheckIn(String eventId) =>
+      '/event-registrations/$eventId/check-in';
 
   static const String matches = '/matches';
   static String match(String id) => '/matches/$id';
@@ -25,4 +33,5 @@ class ApiEndpoints {
 
   static const String payments = '/payments';
   static const String invitations = '/invitations';
+  static const String scoreSubmissions = '/score-submissions';
 }

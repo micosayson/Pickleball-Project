@@ -27,7 +27,7 @@ class TabletLoginView extends StatelessWidget {
               elevation: 12.0,
               shadowColor: Colors.black.withValues(alpha: 0.2),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(32.0),
+                borderRadius: BorderRadius.circular(8.0),
               ),
               child: Container(
                 width: 500.0,

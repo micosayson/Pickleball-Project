@@ -18,8 +18,10 @@ class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   static ApiClient get instance => _instance;
 
-  // ── Change this to your production URL when deploying ─────────────────
-  static const String _baseUrl = 'http://localhost:8000/api/v1';
+  static const String _baseUrl = String.fromEnvironment(
+    'BACKEND_BASE_URL',
+    defaultValue: 'http://localhost:8000/api/v1',
+  );
 
   late final Dio _dio = Dio(
     BaseOptions(
@@ -28,68 +30,73 @@ class ApiClient {
       receiveTimeout: const Duration(seconds: 15),
       headers: {'Content-Type': 'application/json'},
     ),
-  )..interceptors.addAll([
-      _AuthInterceptor(),
-      _ErrorInterceptor(),
-    ]);
-
-  // ── Public HTTP methods ────────────────────────────────────────────────
+  )..interceptors.addAll([_AuthInterceptor(), _ErrorInterceptor()]);
 
   Future<Response<T>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) =>
-      _dio.get<T>(path, queryParameters: queryParameters, options: options);
+  }) => _dio.get<T>(path, queryParameters: queryParameters, options: options);
 
   Future<Response<T>> post<T>(
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) =>
-      _dio.post<T>(path, data: data, queryParameters: queryParameters, options: options);
+  }) => _dio.post<T>(
+    path,
+    data: data,
+    queryParameters: queryParameters,
+    options: options,
+  );
 
   Future<Response<T>> put<T>(
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) =>
-      _dio.put<T>(path, data: data, queryParameters: queryParameters, options: options);
+  }) => _dio.put<T>(
+    path,
+    data: data,
+    queryParameters: queryParameters,
+    options: options,
+  );
 
   Future<Response<T>> patch<T>(
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) =>
-      _dio.patch<T>(path, data: data, queryParameters: queryParameters, options: options);
+  }) => _dio.patch<T>(
+    path,
+    data: data,
+    queryParameters: queryParameters,
+    options: options,
+  );
 
   Future<Response<T>> delete<T>(
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) =>
-      _dio.delete<T>(path, data: data, queryParameters: queryParameters, options: options);
+  }) => _dio.delete<T>(
+    path,
+    data: data,
+    queryParameters: queryParameters,
+    options: options,
+  );
 }
-
-// ── Interceptor: attach Supabase JWT ──────────────────────────────────────
 
 class _AuthInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final token =
-        Supabase.instance.client.auth.currentSession?.accessToken;
+    final token = Supabase.instance.client.auth.currentSession?.accessToken;
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
     }
     handler.next(options);
   }
 }
-
-// ── Interceptor: convert DioException → ApiException ─────────────────────
 
 class _ErrorInterceptor extends Interceptor {
   @override

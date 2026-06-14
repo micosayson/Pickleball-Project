@@ -48,7 +48,7 @@ class DesktopLoginView extends StatelessWidget {
                             color: Colors.white,
                             fontSize: 28.0,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
+                            letterSpacing: 0,
                           ),
                         ),
                       ],
@@ -62,7 +62,7 @@ class DesktopLoginView extends StatelessWidget {
                         fontSize: 64.0,
                         fontWeight: FontWeight.w900,
                         height: 1.05,
-                        letterSpacing: -1.0,
+                        letterSpacing: 0,
                       ),
                     ),
                     const SizedBox(height: 20.0),
@@ -89,7 +89,10 @@ class DesktopLoginView extends StatelessWidget {
             color: const Color(0xFFF9FBF9),
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 64.0, vertical: 32.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 64.0,
+                  vertical: 32.0,
+                ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420.0),
                   child: const Column(

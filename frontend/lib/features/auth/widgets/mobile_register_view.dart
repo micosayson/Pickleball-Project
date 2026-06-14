@@ -7,12 +7,13 @@ class MobileRegisterView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final topImageHeight = size.height * 0.25; // slightly smaller top section to accommodate more fields
+    final topImageHeight = size.height * 0.18;
 
     return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Column(
         children: [
-          // Top Image Section (25% height)
           Stack(
             children: [
               SizedBox(
@@ -27,10 +28,7 @@ class MobileRegisterView extends StatelessWidget {
                 height: topImageHeight,
                 color: Colors.black.withValues(alpha: 0.4),
               ),
-              Container(
-                height: topImageHeight,
-                color: const Color(0x504F6F52),
-              ),
+              Container(height: topImageHeight, color: const Color(0x504F6F52)),
               // App logo overlay
               Positioned(
                 top: 48.0,
@@ -56,7 +54,7 @@ class MobileRegisterView extends StatelessWidget {
                         color: Colors.white,
                         fontSize: 22.0,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                        letterSpacing: 0,
                       ),
                     ),
                   ],
@@ -64,23 +62,22 @@ class MobileRegisterView extends StatelessWidget {
               ),
             ],
           ),
-          // Bottom overlapping card
           Transform.translate(
-            offset: const Offset(0, -32.0),
+            offset: const Offset(0, -18.0),
             child: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(32.0),
-                  topRight: Radius.circular(32.0),
+                  topLeft: Radius.circular(24.0),
+                  topRight: Radius.circular(24.0),
                 ),
               ),
               child: const Padding(
                 padding: EdgeInsets.only(
                   left: 24.0,
                   right: 24.0,
-                  top: 32.0,
-                  bottom: 40.0,
+                  top: 22.0,
+                  bottom: 32.0,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -90,11 +87,11 @@ class MobileRegisterView extends StatelessWidget {
                       title: 'Join Plaqora',
                       subtitle: 'Sign up to start playing.',
                     ),
-                    SizedBox(height: 28.0),
+                    SizedBox(height: 20.0),
                     AuthRegisterForm(),
-                    SizedBox(height: 24.0),
+                    SizedBox(height: 18.0),
                     SocialLogins(),
-                    SizedBox(height: 28.0),
+                    SizedBox(height: 22.0),
                     AuthLoginFooter(),
                   ],
                 ),

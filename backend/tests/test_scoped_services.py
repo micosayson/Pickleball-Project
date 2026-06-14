@@ -1,0 +1,397 @@
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+from fastapi import HTTPException
+
+from app.db import models as _models  # noqa: F401
+from app.core.tenancy import TenantContext
+from app.modules.court_memberships.service import CourtMembershipService
+from app.modules.courts.service import CourtService
+from app.modules.event_registrations.service import EventRegistrationService
+from app.modules.events.schemas import EventUpdate
+from app.modules.events.service import EventService
+from app.modules.matches.schemas import MatchUpdate
+from app.modules.matches.service import MatchService
+from app.modules.ratings.schemas import RatingCreate
+from app.modules.ratings.service import RatingService
+from app.modules.rankings.schemas import RankingCreate
+from app.modules.rankings.service import RankingService
+from app.modules.score_submissions.service import ScoreSubmissionService
+
+
+class FakeRepository:
+    def __init__(self, item=None):
+        self.item = item
+        self.updated_values = None
+        self.created_item = None
+        self.list_args = None
+
+    def list(self, scope=None, **kwargs):
+        self.list_args = (scope, kwargs)
+        return []
+
+    def get_by_id(self, item_id, scope):
+        return self.item
+
+    def create(self, item):
+        self.created_item = item
+        return item
+
+    def update(self, item, values):
+        self.updated_values = values
+        for key, value in values.items():
+            setattr(item, key, value)
+        return item
+
+    def delete(self, item):
+        self.item = None
+
+
+class FakeEventRegistrationRepository:
+    def __init__(self, event=None, registration=None):
+        self.event = event
+        self.registration = registration
+        self.created_item = None
+        self.updated_values = None
+
+    def list_for_user(self, scope, *, user_id, limit=50, offset=0):
+        return []
+
+    def get_event(self, event_id, scope):
+        return self.event
+
+    def get_for_event_user(self, event_id, user_id):
+        return self.registration
+
+    def create(self, registration):
+        self.created_item = registration
+        self.registration = registration
+        return registration
+
+    def update(self, registration, values):
+        self.updated_values = values
+        for key, value in values.items():
+            setattr(registration, key, value)
+        return registration
+
+
+class FakeCourtMembershipRepository:
+    def __init__(self, court=None, membership=None):
+        self.court = court
+        self.membership = membership
+        self.created_item = None
+        self.updated_values = None
+
+    def list_for_user(self, scope, *, user_id, limit=50, offset=0):
+        return []
+
+    def get_court(self, court_id):
+        return self.court
+
+    def get_for_court_user(self, court_id, user_id):
+        return self.membership
+
+    def create(self, membership):
+        self.created_item = membership
+        self.membership = membership
+        return membership
+
+    def update(self, membership, values):
+        self.updated_values = values
+        for key, value in values.items():
+            setattr(membership, key, value)
+        return membership
+
+
+def test_tenant_context_reports_scope():
+    assert TenantContext().has_scope is False
+    assert TenantContext(court_id=str(uuid4())).has_scope is True
+    assert TenantContext(tenant_id=str(uuid4())).has_scope is True
+
+
+def test_tenant_context_checks_allowed_scope():
+    tenant_id = str(uuid4())
+    court_id = str(uuid4())
+    context = TenantContext(
+        tenant_id=tenant_id,
+        court_id=court_id,
+        allowed_tenant_ids=(tenant_id,),
+        allowed_court_ids=(court_id,),
+    )
+
+    assert context.can_access_tenant(tenant_id) is True
+    assert context.can_access_court(court_id) is True
+    assert context.can_access_tenant(str(uuid4())) is False
+    assert context.can_access_court(str(uuid4())) is False
+
+
+def test_court_service_passes_discovery_filters_to_repository():
+    repo = FakeRepository()
+    service = CourtService(repo)
+
+    result = service.list_courts(status="active", limit=12, offset=3)
+
+    assert result == []
+    assert repo.list_args == (None, {"status": "active", "limit": 12, "offset": 3})
+
+
+def test_score_submission_service_passes_filters_to_repository():
+    repo = FakeRepository()
+    service = ScoreSubmissionService(repo)
+    court_id = uuid4()
+    match_id = uuid4()
+
+    result = service.list_score_submissions(
+        court_id=court_id,
+        event_id=None,
+        match_id=match_id,
+        status="pending",
+        limit=8,
+        offset=2,
+    )
+
+    assert result == []
+    assert repo.list_args == (
+        None,
+        {
+            "court_id": court_id,
+            "event_id": None,
+            "match_id": match_id,
+            "status": "pending",
+            "limit": 8,
+            "offset": 2,
+        },
+    )
+
+
+def test_court_membership_join_creates_membership():
+    court_id = uuid4()
+    user_id = uuid4()
+    repo = FakeCourtMembershipRepository(
+        court=SimpleNamespace(id=court_id, status="active"),
+    )
+    service = CourtMembershipService(repo)
+
+    membership = service.join_court(
+        court_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert membership.court_id == court_id
+    assert membership.user_id == user_id
+    assert membership.status == "active"
+
+
+def test_court_membership_join_returns_existing_active_membership():
+    court_id = uuid4()
+    user_id = uuid4()
+    existing = SimpleNamespace(status="active")
+    repo = FakeCourtMembershipRepository(
+        court=SimpleNamespace(id=court_id, status="active"),
+        membership=existing,
+    )
+    service = CourtMembershipService(repo)
+
+    membership = service.join_court(
+        court_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert membership is existing
+    assert repo.created_item is None
+
+
+def test_court_membership_join_reactivates_cancelled_membership():
+    court_id = uuid4()
+    user_id = uuid4()
+    existing = SimpleNamespace(status="cancelled")
+    repo = FakeCourtMembershipRepository(
+        court=SimpleNamespace(id=court_id, status="active"),
+        membership=existing,
+    )
+    service = CourtMembershipService(repo)
+
+    membership = service.join_court(
+        court_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert membership.status == "active"
+    assert repo.updated_values == {"status": "active"}
+
+
+def test_court_membership_leave_marks_cancelled():
+    court_id = uuid4()
+    user_id = uuid4()
+    existing = SimpleNamespace(status="active")
+    repo = FakeCourtMembershipRepository(membership=existing)
+    service = CourtMembershipService(repo)
+
+    membership = service.leave_court(
+        court_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert membership.status == "cancelled"
+    assert repo.updated_values == {"status": "cancelled"}
+
+
+def test_event_registration_join_creates_registration():
+    court_id = uuid4()
+    event_id = uuid4()
+    user_id = uuid4()
+    event = SimpleNamespace(
+        id=event_id,
+        court_id=court_id,
+        status="published",
+    )
+    repo = FakeEventRegistrationRepository(event=event)
+    service = EventRegistrationService(repo)
+
+    registration = service.join_event(
+        event_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert registration.court_id == court_id
+    assert registration.event_id == event_id
+    assert registration.user_id == user_id
+    assert registration.status == "registered"
+
+
+def test_event_registration_join_returns_existing_active_registration():
+    event_id = uuid4()
+    user_id = uuid4()
+    existing = SimpleNamespace(status="checked_in")
+    repo = FakeEventRegistrationRepository(
+        event=SimpleNamespace(id=event_id, court_id=uuid4(), status="in_progress"),
+        registration=existing,
+    )
+    service = EventRegistrationService(repo)
+
+    registration = service.join_event(
+        event_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert registration is existing
+    assert repo.created_item is None
+
+
+def test_event_registration_join_rejects_closed_event():
+    event_id = uuid4()
+    repo = FakeEventRegistrationRepository(
+        event=SimpleNamespace(id=event_id, court_id=uuid4(), status="completed"),
+    )
+    service = EventRegistrationService(repo)
+
+    with pytest.raises(HTTPException) as exc:
+        service.join_event(
+            event_id,
+            TenantContext(backend_user_id=str(uuid4())),
+        )
+
+    assert exc.value.status_code == 409
+
+
+def test_event_registration_check_in_creates_checked_in_registration():
+    court_id = uuid4()
+    event_id = uuid4()
+    user_id = uuid4()
+    event = SimpleNamespace(id=event_id, court_id=court_id, status="in_progress")
+    repo = FakeEventRegistrationRepository(event=event)
+    service = EventRegistrationService(repo)
+
+    registration = service.check_in_event(
+        event_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert registration.court_id == court_id
+    assert registration.event_id == event_id
+    assert registration.user_id == user_id
+    assert registration.status == "checked_in"
+    assert registration.checked_in_at is not None
+
+
+def test_event_registration_check_in_updates_existing_registration():
+    event_id = uuid4()
+    user_id = uuid4()
+    existing = SimpleNamespace(
+        status="registered",
+        cancelled_at="cancelled",
+        checked_in_at=None,
+        checked_out_at="left",
+    )
+    repo = FakeEventRegistrationRepository(
+        event=SimpleNamespace(id=event_id, court_id=uuid4(), status="scheduled"),
+        registration=existing,
+    )
+    service = EventRegistrationService(repo)
+
+    registration = service.check_in_event(
+        event_id,
+        TenantContext(backend_user_id=str(user_id)),
+    )
+
+    assert registration is existing
+    assert registration.status == "checked_in"
+    assert registration.cancelled_at is None
+    assert registration.checked_in_at is not None
+    assert registration.checked_out_at is None
+
+
+def test_event_update_rejects_cross_court_change():
+    repo = FakeRepository(SimpleNamespace(id=uuid4(), court_id=uuid4()))
+    service = EventService(repo)
+    scope = TenantContext(court_id=str(uuid4()))
+
+    with pytest.raises(HTTPException) as exc:
+        service.update_event(uuid4(), EventUpdate(court_id=uuid4()), scope)
+
+    assert exc.value.status_code == 403
+
+
+def test_match_update_rejects_cross_court_change():
+    repo = FakeRepository(SimpleNamespace(id=uuid4(), court_id=uuid4()))
+    service = MatchService(repo)
+    scope = TenantContext(court_id=str(uuid4()))
+
+    with pytest.raises(HTTPException) as exc:
+        service.update_match(uuid4(), MatchUpdate(court_id=uuid4()), scope)
+
+    assert exc.value.status_code == 403
+
+
+def test_rating_create_uses_court_scope_when_payload_omits_court():
+    repo = FakeRepository()
+    service = RatingService(repo)
+    court_id = uuid4()
+    payload = RatingCreate(user_id=uuid4())
+
+    created = service.create_rating(
+        payload,
+        TenantContext(court_id=str(court_id)),
+    )
+
+    assert created.court_id == court_id
+
+
+def test_ranking_create_rejects_cross_court_scope():
+    repo = FakeRepository()
+    service = RankingService(repo)
+    payload = RankingCreate(
+        court_id=uuid4(),
+        user_id=uuid4(),
+        rank_value=1,
+        snapshot_at="2026-06-13T00:00:00Z",
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        service.create_ranking(
+            payload,
+            TenantContext(court_id=str(uuid4())),
+        )
+
+    assert exc.value.status_code == 403

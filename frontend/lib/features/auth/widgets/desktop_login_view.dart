@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth_layout.dart';
+import '../../../core/styles/design_tokens.dart';
 
 class DesktopLoginView extends StatelessWidget {
   const DesktopLoginView({super.key});
@@ -19,8 +20,8 @@ class DesktopLoginView extends StatelessWidget {
                 width: double.infinity,
                 height: double.infinity,
               ),
-              Container(color: Colors.black.withValues(alpha: 0.55)),
-              Container(color: const Color(0x734F6F52)),
+              Container(color: Colors.black.withOpacity(0.55)),
+              Container(color: DesignColors.courtGreen.withOpacity(0.36)),
               Padding(
                 padding: const EdgeInsets.all(64.0),
                 child: Column(
@@ -32,12 +33,12 @@ class DesktopLoginView extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(8.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFA8C686),
+                            color: DesignColors.freshGreen.withOpacity(0.88),
                             borderRadius: BorderRadius.circular(12.0),
                           ),
                           child: const Icon(
                             Icons.sports_tennis_rounded,
-                            color: Color(0xFF4F6F52),
+                            color: Colors.white,
                             size: 28.0,
                           ),
                         ),
@@ -86,7 +87,7 @@ class DesktopLoginView extends StatelessWidget {
         Expanded(
           flex: 45,
           child: Container(
-            color: const Color(0xFFF9FBF9),
+            color: DesignColors.chalk,
             child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(

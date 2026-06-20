@@ -4,6 +4,7 @@ import '../pages/login_page.dart';
 import '../pages/register_page.dart';
 import '../services/auth_service.dart';
 import '../../home/pages/home_placeholder_page.dart';
+import '../../../core/styles/design_tokens.dart';
 
 bool _looksLikeEmail(String value) {
   final atIndex = value.indexOf('@');
@@ -41,20 +42,20 @@ class AuthHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
+                Container(
                 padding: const EdgeInsets.all(6.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4F6F52).withValues(alpha: 0.1),
+                  color: DesignColors.courtGreen.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(10.0),
                 ),
                 child: const Icon(
                   Icons.sports_tennis_rounded,
-                  color: Color(0xFF4F6F52),
+                  color: DesignColors.courtGreen,
                   size: 24.0,
                 ),
               ),
               const SizedBox(width: 8.0),
-              const Text(
+                const Text(
                 'Plaqora',
                 style: TextStyle(
                   color: Color(0xFF4F6F52),
@@ -71,7 +72,7 @@ class AuthHeader extends StatelessWidget {
           title,
           textAlign: isDesktop ? TextAlign.left : TextAlign.center,
           style: TextStyle(
-            color: const Color(0xFF4F6F52),
+            color: DesignColors.courtGreen,
             fontSize: isDesktop ? 36.0 : 28.0,
             fontWeight: FontWeight.w900,
             letterSpacing: 0,
@@ -82,10 +83,10 @@ class AuthHeader extends StatelessWidget {
           subtitle,
           textAlign: isDesktop ? TextAlign.left : TextAlign.center,
           style: TextStyle(
-            color: const Color(0xFF739072),
-            fontSize: isDesktop ? 16.0 : 14.5,
-            fontWeight: FontWeight.w500,
-          ),
+              color: DesignColors.muted,
+              fontSize: isDesktop ? 16.0 : 14.5,
+              fontWeight: FontWeight.w500,
+            ),
         ),
       ],
     );

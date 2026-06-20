@@ -8,6 +8,12 @@ import '../../auth/pages/login_page.dart';
 import '../../auth/services/auth_service.dart';
 import '../../courts/services/court_service.dart';
 import '../../events/services/event_service.dart';
+import 'dashboard_page.dart';
+import 'bookings_page.dart';
+import 'notifications_page.dart';
+import 'matches_list_page.dart';
+import 'court_details_page.dart';
+import 'profile_history_page.dart';
 
 part 'play/active_match_page.dart';
 part 'play/court_sessions_page.dart';
@@ -47,6 +53,7 @@ class HomePlaceholderPage extends StatefulWidget {
 
 class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   late final Future<List<CourtSummary>> _courtsFuture;
+  late final _PrototypeMatch _prototypeMatch;
   CourtSummary? _selectedCourt;
   Future<List<EventSummary>>? _courtEventsFuture;
   EventSummary? _selectedSession;
@@ -61,7 +68,9 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   @override
   void initState() {
     super.initState();
-    _courtsFuture = const CourtService().listCourts();
+    final courts = _PrototypeData.courts();
+    _prototypeMatch = _PrototypeData.match();
+    _courtsFuture = Future.value(courts);
   }
 
   Future<void> _runRequest(
@@ -112,6 +121,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                 selectedSession: _selectedSession,
                 activeSession: _activeSession,
                 activeRegistration: _activeRegistration,
+                prototypeMatch: _prototypeMatch,
                 matchFinished: _matchFinished,
                 playPage: _playPage,
                 joinLobby: _joinLobby,
@@ -222,7 +232,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
 
   Future<void> _joinLobby(EventSummary event) {
     return _runRequest(() async {
-      final registration = await const EventService().joinLobby(event.id);
+      final registration = _PrototypeData.joinLobby(event.id);
       if (mounted) {
         setState(() {
           _selectedSession = event;
@@ -239,7 +249,8 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   void _markMatchFinished() {
     setState(() {
       _matchFinished = true;
-      _lastResult = 'Match #102 marked finished. Waiting for verification.';
+      _lastResult =
+          '${_prototypeMatch.matchNumber} marked finished. Waiting for verification.';
       _playPage = _PlayPage.waitingVerification;
     });
   }
@@ -262,7 +273,8 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   void _returnToQueue() {
     setState(() {
       _matchFinished = false;
-      _lastResult = 'Match verified. Player returned to queue.';
+      _lastResult =
+          '${_prototypeMatch.matchNumber} verified. Player returned to queue.';
       _playPage = _PlayPage.mySession;
       _selectedIndex = 0;
     });
@@ -278,31 +290,26 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
           ? _PlayPage.status
           : _PlayPage.courtSessions;
       _selectedIndex = 0;
-      _lastResult = 'Left court. Player removed from the local queue view.';
+      _lastResult = 'Left court. Mock queue state cleared.';
     });
   }
 
   Future<void> _selectCourt(CourtSummary court) {
     return _runRequest(() async {
-      final selection = await const CourtMembershipService().joinCourt(
-        court.id,
-      );
       if (mounted) {
         setState(() {
           _selectedCourt = court;
-          _courtEventsFuture = const EventService().listEvents(
-            limit: 12,
-            courtId: court.id,
-          );
+          _courtEventsFuture = Future.value(_PrototypeData.eventsForCourt(court.id));
           _selectedSession = null;
           _activeSession = null;
           _activeRegistration = null;
           _matchFinished = false;
           _playPage = _PlayPage.courtSessions;
           _selectedIndex = 0;
+          _lastResult = 'Selected ${court.name}. Mock sessions loaded.';
         });
       }
-      return selection;
+      return court;
     }, 'Court selected');
   }
 }
@@ -315,6 +322,7 @@ class _PlayTab extends StatelessWidget {
     required this.selectedSession,
     required this.activeSession,
     required this.activeRegistration,
+    required this.prototypeMatch,
     required this.matchFinished,
     required this.playPage,
     required this.joinLobby,
@@ -337,6 +345,7 @@ class _PlayTab extends StatelessWidget {
   final EventSummary? selectedSession;
   final EventSummary? activeSession;
   final EventRegistrationSummary? activeRegistration;
+  final _PrototypeMatch prototypeMatch;
   final bool matchFinished;
   final _PlayPage playPage;
   final Future<void> Function(EventSummary) joinLobby;
@@ -361,6 +370,7 @@ class _PlayTab extends StatelessWidget {
       selectedSession: selectedSession,
       activeSession: activeSession,
       activeRegistration: activeRegistration,
+      prototypeMatch: prototypeMatch,
       matchFinished: matchFinished,
       playPage: playPage,
       joinLobby: joinLobby,
@@ -479,6 +489,37 @@ class _ProfileTab extends StatelessWidget {
             icon: Icons.speed_rounded,
             label: 'Rating',
             value: 'Connect ratings screen',
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.tonal(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DashboardPage())),
+                child: const Text('Dashboard'),
+              ),
+              FilledButton.tonal(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BookingsPage())),
+                child: const Text('Bookings'),
+              ),
+              FilledButton.tonal(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsPage())),
+                child: const Text('Notifications'),
+              ),
+              FilledButton.tonal(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MatchesListPage())),
+                child: const Text('Matches'),
+              ),
+              FilledButton.tonal(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileHistoryPage())),
+                child: const Text('Profile / History'),
+              ),
+              FilledButton.tonal(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CourtDetailsPage(courtId: 'skyline-courts'))),
+                child: const Text('Court details'),
+              ),
+            ],
           ),
         ],
       ),
@@ -1159,11 +1200,13 @@ class _MySessionCard extends StatelessWidget {
     required this.court,
     required this.session,
     required this.registration,
+    required this.prototypeMatch,
   });
 
   final CourtSummary court;
   final EventSummary session;
   final EventRegistrationSummary? registration;
+  final _PrototypeMatch prototypeMatch;
 
   @override
   Widget build(BuildContext context) {
@@ -1220,6 +1263,16 @@ class _MySessionCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 10),
+                _SessionMetaRow(
+                  icon: Icons.confirmation_number_rounded,
+                  text:
+                      'Match ${prototypeMatch.matchNumber} - Queue position ${prototypeMatch.queuePosition}',
+                ),
+                _SessionMetaRow(
+                  icon: Icons.timer_rounded,
+                  text: 'Estimated wait ${prototypeMatch.estimatedWait}',
                 ),
               ],
             ),
@@ -1285,7 +1338,7 @@ class _MySessionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'You will be notified when your match at ${court.name} is ready.',
+                  'You will be notified when ${prototypeMatch.matchNumber} is ready at ${court.name}.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: _muted,
@@ -1346,9 +1399,14 @@ class _SessionStep extends StatelessWidget {
 }
 
 class _UpcomingMatchCard extends StatelessWidget {
-  const _UpcomingMatchCard({required this.court, required this.onGoToCourt});
+  const _UpcomingMatchCard({
+    required this.court,
+    required this.prototypeMatch,
+    required this.onGoToCourt,
+  });
 
   final CourtSummary court;
+  final _PrototypeMatch prototypeMatch;
   final VoidCallback onGoToCourt;
 
   @override
@@ -1372,19 +1430,16 @@ class _UpcomingMatchCard extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Text(
-            '${court.name} - Match #102',
+            '${court.name} - Match ${prototypeMatch.matchNumber}',
             style: const TextStyle(color: _muted, fontSize: 12.5),
           ),
           const SizedBox(height: 16),
-          const _TeamCard(
-            name: 'Team A',
-            color: Color(0xFF3B82F6),
-            tint: Color(0xFFF1F6FF),
-            border: Color(0xFFD8E5FF),
-            players: [
-              _MatchPlayer(name: 'Mico Santos', rating: '3.20'),
-              _MatchPlayer(name: 'John Reyes', rating: '3.15'),
-            ],
+          _TeamCard(
+            name: prototypeMatch.homeTeam.name,
+            color: prototypeMatch.homeTeam.color,
+            tint: prototypeMatch.homeTeam.tint,
+            border: prototypeMatch.homeTeam.border,
+            players: prototypeMatch.homeTeam.players,
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
@@ -1399,15 +1454,12 @@ class _UpcomingMatchCard extends StatelessWidget {
               ),
             ),
           ),
-          const _TeamCard(
-            name: 'Team B',
-            color: Color(0xFFE43F5A),
-            tint: Color(0xFFFFF1F4),
-            border: Color(0xFFF9D7DF),
-            players: [
-              _MatchPlayer(name: 'Anna Garcia', rating: '3.25'),
-              _MatchPlayer(name: 'Kyle Wong', rating: '3.10'),
-            ],
+          _TeamCard(
+            name: prototypeMatch.awayTeam.name,
+            color: prototypeMatch.awayTeam.color,
+            tint: prototypeMatch.awayTeam.tint,
+            border: prototypeMatch.awayTeam.border,
+            players: prototypeMatch.awayTeam.players,
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -1427,11 +1479,13 @@ class _UpcomingMatchCard extends StatelessWidget {
 class _MatchResultCard extends StatelessWidget {
   const _MatchResultCard({
     required this.court,
+    required this.prototypeMatch,
     required this.matchFinished,
     required this.onMatchFinished,
   });
 
   final CourtSummary court;
+  final _PrototypeMatch prototypeMatch;
   final bool matchFinished;
   final VoidCallback onMatchFinished;
 
@@ -1446,8 +1500,8 @@ class _MatchResultCard extends StatelessWidget {
             title: 'Match result',
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Match #102',
+          Text(
+            'Match ${prototypeMatch.matchNumber}',
             style: TextStyle(
               color: _ink,
               fontSize: 16,
@@ -1456,14 +1510,14 @@ class _MatchResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            court.name,
+            '${court.name} - ${prototypeMatch.scoreSummary}',
             style: const TextStyle(color: _muted, fontSize: 12.5),
           ),
           const Divider(height: 28, color: _line),
-          const Center(
+          Center(
             child: Text(
-              'Team A',
-              style: TextStyle(
+              prototypeMatch.homeTeam.name,
+              style: const TextStyle(
                 color: _ink,
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
@@ -1471,7 +1525,7 @@ class _MatchResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Center(child: _ScoreBox(score: '11')),
+          Center(child: _ScoreBox(score: prototypeMatch.homeScore)),
           const SizedBox(height: 12),
           const Center(
             child: Text(
@@ -1484,10 +1538,10 @@ class _MatchResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const Center(
+          Center(
             child: Text(
-              'Team B',
-              style: TextStyle(
+              prototypeMatch.awayTeam.name,
+              style: const TextStyle(
                 color: _ink,
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
@@ -1495,7 +1549,7 @@ class _MatchResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Center(child: _ScoreBox(score: '7')),
+          Center(child: _ScoreBox(score: prototypeMatch.awayScore)),
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
@@ -1516,10 +1570,10 @@ class _MatchResultCard extends StatelessWidget {
           ),
           if (matchFinished) ...[
             const SizedBox(height: 10),
-            const Center(
+            Center(
               child: Text(
-                'Waiting for queue master verification',
-                style: TextStyle(
+                '${prototypeMatch.verifierName} is confirming the result',
+                style: const TextStyle(
                   color: _muted,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
@@ -2143,4 +2197,183 @@ class _Panel extends StatelessWidget {
       child: child,
     );
   }
+}
+
+class _PrototypeData {
+  static List<CourtSummary> courts() {
+    return const [
+      CourtSummary(
+        id: 'court-riverview',
+        name: 'Riverview Pickleball Club',
+        slug: 'riverview-pickleball-club',
+        status: 'active',
+        address: '12 Harbor Ave, Taipei',
+        contactInfo: 'Queue master: Ana',
+      ),
+      CourtSummary(
+        id: 'court-skyline',
+        name: 'Skyline Courts',
+        slug: 'skyline-courts',
+        status: 'active',
+        address: '88 Aurora Street, Taipei',
+        contactInfo: 'Queue master: Mico',
+      ),
+      CourtSummary(
+        id: 'court-sunrise',
+        name: 'Sunrise Sports Hub',
+        slug: 'sunrise-sports-hub',
+        status: 'active',
+        address: '44 Dawn Lane, New Taipei',
+        contactInfo: 'Queue master: Joey',
+      ),
+    ];
+  }
+
+  static List<EventSummary> eventsForCourt(String courtId) {
+    switch (courtId) {
+      case 'court-riverview':
+        return _buildSessions(
+          courtId,
+          [
+            ('Thursday Competitive Play', 'competitive_play', 16, 0, 90),
+            ('Sunset Ladder Night', 'ladder_match', 16, 150, 90),
+            ('Weekend Social Warmup', 'open_play', 20, 330, 120),
+          ],
+        );
+      case 'court-skyline':
+        return _buildSessions(
+          courtId,
+          [
+            ('City League Rotation', 'competitive_play', 12, 45, 90),
+            ('Late Court Ladder', 'ladder_match', 12, 210, 90),
+            ('All Levels Open Play', 'open_play', 18, 360, 120),
+          ],
+        );
+      case 'court-sunrise':
+        return _buildSessions(
+          courtId,
+          [
+            ('Morning Open Play', 'open_play', 18, 30, 120),
+            ('Friday Mixed Doubles', 'competitive_play', 16, 180, 90),
+            ('Kings Court Ladder', 'ladder_match', 10, 300, 90),
+          ],
+        );
+      default:
+        return _buildSessions(
+          courtId,
+          [
+            ('Open Play', 'open_play', 12, 60, 120),
+          ],
+        );
+    }
+  }
+
+  static EventRegistrationSummary joinLobby(String eventId) {
+    return EventRegistrationSummary(
+      id: 'registration-$eventId',
+      eventId: eventId,
+      status: 'checked_in',
+      checkedInAt: DateTime.now().toUtc().subtract(const Duration(minutes: 6)),
+    );
+  }
+
+  static _PrototypeMatch match() {
+    return _PrototypeMatch(
+      matchNumber: '102',
+      queuePosition: '3',
+      estimatedWait: '14 min',
+      verifierName: 'Court Marshal Ana',
+      homeScore: '11',
+      awayScore: '7',
+      homeTeam: _PrototypeMatchTeam(
+        name: 'Team A',
+        color: const Color(0xFF3B82F6),
+        tint: const Color(0xFFF1F6FF),
+        border: const Color(0xFFD8E5FF),
+        players: const [
+          _MatchPlayer(name: 'Mico Santos', rating: '3.20'),
+          _MatchPlayer(name: 'John Reyes', rating: '3.15'),
+        ],
+      ),
+      awayTeam: _PrototypeMatchTeam(
+        name: 'Team B',
+        color: const Color(0xFFE43F5A),
+        tint: const Color(0xFFFFF1F4),
+        border: const Color(0xFFF9D7DF),
+        players: const [
+          _MatchPlayer(name: 'Anna Garcia', rating: '3.25'),
+          _MatchPlayer(name: 'Kyle Wong', rating: '3.10'),
+        ],
+      ),
+    );
+  }
+
+  static List<EventSummary> _buildSessions(
+    String courtId,
+    List<(String, String, int, int, int)> specs,
+  ) {
+    final baseDate = DateTime.now().toUtc();
+    return List<EventSummary>.unmodifiable(
+      specs
+          .asMap()
+          .entries
+          .map((entry) {
+            final index = entry.key;
+            final spec = entry.value;
+            final startAt = baseDate.add(Duration(hours: spec.$4));
+            final endAt = startAt.add(Duration(minutes: spec.$5));
+            return EventSummary(
+              id: '$courtId-${index + 1}',
+              courtId: courtId,
+              name: spec.$1,
+              eventType: spec.$2,
+              status: index == 0 ? 'in_progress' : 'scheduled',
+              startAt: startAt,
+              endAt: endAt,
+              capacity: spec.$3,
+            );
+          })
+          .toList(growable: false),
+    );
+  }
+}
+
+class _PrototypeMatch {
+  const _PrototypeMatch({
+    required this.matchNumber,
+    required this.queuePosition,
+    required this.estimatedWait,
+    required this.verifierName,
+    required this.homeTeam,
+    required this.awayTeam,
+    required this.homeScore,
+    required this.awayScore,
+  });
+
+  final String matchNumber;
+  final String queuePosition;
+  final String estimatedWait;
+  final String verifierName;
+  final _PrototypeMatchTeam homeTeam;
+  final _PrototypeMatchTeam awayTeam;
+  final String homeScore;
+  final String awayScore;
+
+  String get scoreSummary => '$homeScore-$awayScore';
+}
+
+class _PrototypeMatchTeam {
+  const _PrototypeMatchTeam({
+    required this.name,
+    required this.color,
+    required this.tint,
+    required this.border,
+    required this.players,
+  });
+
+  final String name;
+  final Color color;
+  final Color tint;
+  final Color border;
+  final List<_MatchPlayer> players;
 }

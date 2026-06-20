@@ -3,11 +3,13 @@ part of '../home_placeholder_page.dart';
 class _MatchResultPage extends StatelessWidget {
   const _MatchResultPage({
     required this.court,
+    required this.prototypeMatch,
     required this.matchFinished,
     required this.onMatchFinished,
   });
 
   final CourtSummary court;
+  final _PrototypeMatch prototypeMatch;
   final bool matchFinished;
   final VoidCallback onMatchFinished;
 
@@ -24,6 +26,7 @@ class _MatchResultPage extends StatelessWidget {
         const SizedBox(height: 16),
         _MatchResultCard(
           court: court,
+          prototypeMatch: prototypeMatch,
           matchFinished: matchFinished,
           onMatchFinished: onMatchFinished,
         ),

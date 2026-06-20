@@ -12,10 +12,18 @@ from app.api.v1.routes.ratings import router as ratings_router
 from app.api.v1.routes.score_submissions import router as score_submissions_router
 from app.api.v1.routes.test import router as test_router
 from app.api.v1.routes.users import router as users_router
+from app.api.v1.routes.payments import router as payments_router
+from app.api.v1.routes.bookings import router as bookings_router
+from app.api.v1.routes.notifications import router as notifications_router
+from app.api.v1.routes.dashboard import router as dashboard_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(users_router, prefix="/users", tags=["users"])
+api_router.include_router(payments_router, prefix="/payments", tags=["payments"])
+api_router.include_router(bookings_router, prefix="/bookings", tags=["bookings"])
+api_router.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(courts_router, prefix="/courts", tags=["courts"])
 api_router.include_router(court_memberships_router, prefix="/court-memberships", tags=["court-memberships"])
 api_router.include_router(invitations_router, prefix="/invitations", tags=["invitations"])

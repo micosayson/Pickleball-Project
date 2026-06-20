@@ -3,11 +3,13 @@ part of '../home_placeholder_page.dart';
 class _ActiveMatchPage extends StatelessWidget {
   const _ActiveMatchPage({
     required this.court,
+    required this.prototypeMatch,
     required this.onShowMatchResult,
     required this.onLeaveCourt,
   });
 
   final CourtSummary court;
+  final _PrototypeMatch prototypeMatch;
   final VoidCallback onShowMatchResult;
   final VoidCallback onLeaveCourt;
 
@@ -33,8 +35,8 @@ class _ActiveMatchPage extends StatelessWidget {
               const SizedBox(height: 14),
               _StatusActionCard(
                 icon: Icons.location_on_rounded,
-                title: 'Match #102',
-                detail: '${court.name} - Team A vs Team B',
+                title: 'Match ${prototypeMatch.matchNumber}',
+                detail: '${court.name} - ${prototypeMatch.homeTeam.name} vs ${prototypeMatch.awayTeam.name}',
                 actionLabel: 'View result',
                 onPressed: onShowMatchResult,
               ),

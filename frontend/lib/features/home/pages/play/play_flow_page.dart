@@ -8,6 +8,7 @@ class _PlayFlowPage extends StatelessWidget {
     required this.selectedSession,
     required this.activeSession,
     required this.activeRegistration,
+    required this.prototypeMatch,
     required this.matchFinished,
     required this.playPage,
     required this.joinLobby,
@@ -30,6 +31,7 @@ class _PlayFlowPage extends StatelessWidget {
   final EventSummary? selectedSession;
   final EventSummary? activeSession;
   final EventRegistrationSummary? activeRegistration;
+  final _PrototypeMatch prototypeMatch;
   final bool matchFinished;
   final _PlayPage playPage;
   final Future<void> Function(EventSummary) joinLobby;
@@ -77,6 +79,7 @@ class _PlayFlowPage extends StatelessWidget {
         court: selectedCourt!,
         session: activeSession!,
         registration: activeRegistration,
+        prototypeMatch: prototypeMatch,
         onShowUpcomingMatch: onShowUpcomingMatch,
         onLeaveCourt: onLeaveCourt,
       );
@@ -85,6 +88,7 @@ class _PlayFlowPage extends StatelessWidget {
     if (playPage == _PlayPage.upcomingMatch && selectedCourt != null) {
       return _UpcomingMatchPage(
         court: selectedCourt!,
+        prototypeMatch: prototypeMatch,
         onBack: onShowStatus,
         onGoToCourt: onGoToCourt,
         onLeaveCourt: onLeaveCourt,
@@ -94,6 +98,7 @@ class _PlayFlowPage extends StatelessWidget {
     if (playPage == _PlayPage.activeMatch && selectedCourt != null) {
       return _ActiveMatchPage(
         court: selectedCourt!,
+        prototypeMatch: prototypeMatch,
         onShowMatchResult: onShowMatchResult,
         onLeaveCourt: onLeaveCourt,
       );
@@ -102,6 +107,7 @@ class _PlayFlowPage extends StatelessWidget {
     if (playPage == _PlayPage.matchResult && selectedCourt != null) {
       return _MatchResultPage(
         court: selectedCourt!,
+        prototypeMatch: prototypeMatch,
         matchFinished: matchFinished,
         onMatchFinished: onMatchFinished,
       );
@@ -110,6 +116,7 @@ class _PlayFlowPage extends StatelessWidget {
     if (playPage == _PlayPage.waitingVerification && selectedCourt != null) {
       return _WaitingVerificationPage(
         court: selectedCourt!,
+        prototypeMatch: prototypeMatch,
         onReturnToQueue: onReturnToQueue,
       );
     }

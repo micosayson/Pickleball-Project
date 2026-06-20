@@ -32,6 +32,10 @@ class ApiEndpoints {
   static const String ratingHistory = '/rating-history';
 
   static const String payments = '/payments';
+    static const String bookings = '/bookings';
+    static String booking(String id) => '/bookings/$id';
+    static const String notifications = '/notifications';
+    static const String dashboard = '/dashboard';
   static const String invitations = '/invitations';
   static const String scoreSubmissions = '/score-submissions';
 }

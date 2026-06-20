@@ -3,10 +3,12 @@ part of '../home_placeholder_page.dart';
 class _WaitingVerificationPage extends StatelessWidget {
   const _WaitingVerificationPage({
     required this.court,
+    required this.prototypeMatch,
     required this.onReturnToQueue,
   });
 
   final CourtSummary court;
+  final _PrototypeMatch prototypeMatch;
   final VoidCallback onReturnToQueue;
 
   @override
@@ -16,7 +18,7 @@ class _WaitingVerificationPage extends StatelessWidget {
         _PageHeader(
           title: 'Waiting for verification',
           detail:
-              'Match #102 is marked finished. The queue master verifies the result before returning the player to the queue.',
+              'Match ${prototypeMatch.matchNumber} is marked finished. The queue master verifies the result before returning the player to the queue.',
           icon: Icons.hourglass_top_rounded,
         ),
         const SizedBox(height: 16),
@@ -56,7 +58,7 @@ class _WaitingVerificationPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'After verification at ${court.name}, the queue list adjusts and the player is available for the next match.',
+                      'After verification at ${court.name}, ${prototypeMatch.verifierName} will release you back into queue position ${prototypeMatch.queuePosition}.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: _muted,

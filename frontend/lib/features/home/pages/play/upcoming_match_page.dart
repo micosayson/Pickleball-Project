@@ -3,12 +3,14 @@ part of '../home_placeholder_page.dart';
 class _UpcomingMatchPage extends StatelessWidget {
   const _UpcomingMatchPage({
     required this.court,
+    required this.prototypeMatch,
     required this.onBack,
     required this.onGoToCourt,
     required this.onLeaveCourt,
   });
 
   final CourtSummary court;
+  final _PrototypeMatch prototypeMatch;
   final VoidCallback onBack;
   final VoidCallback onGoToCourt;
   final VoidCallback onLeaveCourt;
@@ -25,7 +27,7 @@ class _UpcomingMatchPage extends StatelessWidget {
           onBack: onBack,
         ),
         const SizedBox(height: 16),
-        _UpcomingMatchCard(court: court, onGoToCourt: onGoToCourt),
+        _UpcomingMatchCard(court: court, prototypeMatch: prototypeMatch, onGoToCourt: onGoToCourt),
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,

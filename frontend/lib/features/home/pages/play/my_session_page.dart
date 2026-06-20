@@ -5,6 +5,7 @@ class _MySessionPage extends StatelessWidget {
     required this.court,
     required this.session,
     required this.registration,
+    required this.prototypeMatch,
     required this.onShowUpcomingMatch,
     required this.onLeaveCourt,
   });
@@ -12,6 +13,7 @@ class _MySessionPage extends StatelessWidget {
   final CourtSummary court;
   final EventSummary session;
   final EventRegistrationSummary? registration;
+  final _PrototypeMatch prototypeMatch;
   final VoidCallback onShowUpcomingMatch;
   final VoidCallback onLeaveCourt;
 
@@ -30,6 +32,7 @@ class _MySessionPage extends StatelessWidget {
           court: court,
           session: session,
           registration: registration,
+          prototypeMatch: prototypeMatch,
         ),
         const SizedBox(height: 16),
         Row(

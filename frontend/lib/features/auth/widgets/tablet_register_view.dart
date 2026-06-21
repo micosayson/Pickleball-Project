@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/styles/design_tokens.dart';
 import 'auth_layout.dart';
 
 class TabletRegisterView extends StatelessWidget {
@@ -17,7 +18,7 @@ class TabletRegisterView extends StatelessWidget {
         ),
         // Dark/Green tint Overlays
         Container(color: Colors.black.withValues(alpha: 0.55)),
-        Container(color: const Color(0x734F6F52)),
+        Container(color: DesignColors.courtGreen.withValues(alpha: 0.42)),
         // Centered Card
         Center(
           child: SingleChildScrollView(
@@ -26,7 +27,7 @@ class TabletRegisterView extends StatelessWidget {
               vertical: 24.0,
             ),
             child: Card(
-              color: Colors.white,
+              color: DesignColors.chalk,
               elevation: 12.0,
               shadowColor: Colors.black.withValues(alpha: 0.2),
               shape: RoundedRectangleBorder(
@@ -41,7 +42,7 @@ class TabletRegisterView extends StatelessWidget {
                   children: [
                     AuthHeader(
                       isDesktop: false,
-                      title: 'Join Plaqora',
+                      title: 'Join RallyHub',
                       subtitle: 'Sign up to start playing.',
                     ),
                     SizedBox(height: 32.0),

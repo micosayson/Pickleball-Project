@@ -16,15 +16,17 @@ class ApiEndpoints {
 
   static const String events = '/events';
   static String event(String id) => '/events/$id';
+  static String eventCheckIn(String id) => '/events/$id/check-in';
+  static String eventStatus(String id) => '/events/$id/me/status';
+  static String eventLeave(String id) => '/events/$id/leave';
   static String eventParticipants(String id) => '/events/$id/participants';
   static const String eventRegistrations = '/event-registrations';
   static String eventRegistration(String eventId) =>
       '/event-registrations/$eventId';
-  static String eventCheckIn(String eventId) =>
-      '/event-registrations/$eventId/check-in';
 
   static const String matches = '/matches';
   static String match(String id) => '/matches/$id';
+  static String matchStart(String id) => '/matches/$id/start';
   static String matchParticipants(String id) => '/matches/$id/participants';
 
   static const String ratings = '/ratings';
@@ -32,10 +34,15 @@ class ApiEndpoints {
   static const String ratingHistory = '/rating-history';
 
   static const String payments = '/payments';
-    static const String bookings = '/bookings';
-    static String booking(String id) => '/bookings/$id';
-    static const String notifications = '/notifications';
-    static const String dashboard = '/dashboard';
+  static const String bookings = '/bookings';
+  static String booking(String id) => '/bookings/$id';
+  static const String notifications = '/notifications';
+  static const String dashboard = '/dashboard';
   static const String invitations = '/invitations';
   static const String scoreSubmissions = '/score-submissions';
+  static String scoreSubmission(String id) => '/score-submissions/$id';
+  static String scoreSubmissionVerify(String id) =>
+      '/score-submissions/$id/verify';
+  static String scoreSubmissionReject(String id) =>
+      '/score-submissions/$id/reject';
 }

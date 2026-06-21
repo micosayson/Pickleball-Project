@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from typing import List
 
@@ -21,34 +21,19 @@ class BookingSummary(BaseModel):
     status: str
 
 
-# Simple in-memory store for scaffold/demo purposes
-_BOOKINGS: List[dict] = []
+BOOKINGS_DEFERRED_DETAIL = "Bookings are deferred until the booking backend phase."
 
 
 @router.get("/", response_model=List[BookingSummary])
 def list_bookings():
-    return _BOOKINGS
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=BOOKINGS_DEFERRED_DETAIL)
 
 
 @router.post("/", response_model=BookingSummary)
 def create_booking(payload: BookingCreate):
-    import uuid
-
-    b = {
-        "id": str(uuid.uuid4()),
-        "court_id": payload.court_id,
-        "start_at": payload.start_at,
-        "end_at": payload.end_at,
-        "user_id": payload.user_id,
-        "status": "confirmed",
-    }
-    _BOOKINGS.append(b)
-    return b
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=BOOKINGS_DEFERRED_DETAIL)
 
 
 @router.get("/{booking_id}", response_model=BookingSummary)
 def get_booking(booking_id: str):
-    for b in _BOOKINGS:
-        if b["id"] == booking_id:
-            return b
-    raise HTTPException(status_code=404, detail="Booking not found")
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=BOOKINGS_DEFERRED_DETAIL)

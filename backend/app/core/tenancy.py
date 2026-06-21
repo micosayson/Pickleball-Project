@@ -11,6 +11,9 @@ class TenantContext:
     platform_role: Optional[str] = None
     allowed_tenant_ids: tuple[str, ...] = ()
     allowed_court_ids: tuple[str, ...] = ()
+    owned_court_ids: tuple[str, ...] = ()
+    staff_court_ids: tuple[str, ...] = ()
+    member_court_ids: tuple[str, ...] = ()
 
     @property
     def has_scope(self) -> bool:
@@ -25,4 +28,11 @@ class TenantContext:
 
     def can_access_court(self, court_id: str) -> bool:
         return self.is_platform_admin or court_id in self.allowed_court_ids
+
+    def can_operate_court(self, court_id: str) -> bool:
+        return (
+            self.is_platform_admin
+            or court_id in self.owned_court_ids
+            or court_id in self.staff_court_ids
+        )
 

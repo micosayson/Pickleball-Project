@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from typing import List
 
@@ -12,12 +12,10 @@ class PaymentItem(BaseModel):
 	status: str
 
 
-_PAYMENTS = [
-	{"id": "p1", "amount": 1000, "currency": "usd", "status": "paid"},
-]
+PAYMENTS_DEFERRED_DETAIL = "Payments are deferred until the payment backend phase."
 
 
 @router.get("/", response_model=List[PaymentItem])
 def list_payments():
-	return _PAYMENTS
+	raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=PAYMENTS_DEFERRED_DETAIL)
 

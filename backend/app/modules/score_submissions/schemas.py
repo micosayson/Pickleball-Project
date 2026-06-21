@@ -1,7 +1,18 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ScoreSubmissionCreate(BaseModel):
+    match_id: UUID
+    team_one_score: int = Field(ge=0)
+    team_two_score: int = Field(ge=0)
+    notes: str | None = None
+
+
+class ScoreSubmissionReject(BaseModel):
+    dispute_reason: str | None = None
 
 
 class ScoreSubmissionRead(BaseModel):

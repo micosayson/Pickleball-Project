@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/styles/design_tokens.dart';
 import 'auth_layout.dart';
 
 class TabletLoginView extends StatelessWidget {
@@ -17,13 +18,13 @@ class TabletLoginView extends StatelessWidget {
         ),
         // Dark/Green tint Overlays
         Container(color: Colors.black.withValues(alpha: 0.55)),
-        Container(color: const Color(0x734F6F52)),
+        Container(color: DesignColors.courtGreen.withValues(alpha: 0.42)),
         // Centered Card
         Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(40.0),
             child: Card(
-              color: Colors.white,
+              color: DesignColors.chalk,
               elevation: 12.0,
               shadowColor: Colors.black.withValues(alpha: 0.2),
               shape: RoundedRectangleBorder(
@@ -38,7 +39,7 @@ class TabletLoginView extends StatelessWidget {
                   children: [
                     AuthHeader(
                       isDesktop: false,
-                      title: 'Welcome Back!',
+                      title: 'Welcome back',
                       subtitle: 'Log in to keep the rally going.',
                     ),
                     SizedBox(height: 32.0),

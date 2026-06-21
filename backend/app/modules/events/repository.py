@@ -16,9 +16,19 @@ class EventRepository:
             query = query.filter(Event.court_id == UUID(scope.court_id))
         return query
 
-    def list(self, scope: TenantContext, *, limit: int = 50, offset: int = 0) -> list[Event]:
+    def list(
+        self,
+        scope: TenantContext,
+        *,
+        court_id: UUID | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Event]:
+        query = self._scoped_query(scope)
+        if court_id is not None:
+            query = query.filter(Event.court_id == court_id)
         return (
-            self._scoped_query(scope)
+            query
             .order_by(Event.start_at.asc())
             .offset(offset)
             .limit(limit)

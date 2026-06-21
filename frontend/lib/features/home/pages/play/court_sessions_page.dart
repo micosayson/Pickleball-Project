@@ -104,21 +104,13 @@ class _SessionListTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _chalk,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _line),
       ),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: _courtGreen,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.event_rounded, color: Colors.white),
-          ),
+          const _CourtSurfaceIcon(icon: Icons.event_rounded),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -135,11 +127,19 @@ class _SessionListTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '${_formatTimeRange(event.startAt, event.endAt)} - ${_eventTypeLabel(event.eventType)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _muted, fontSize: 12.5),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _SignalChip(
+                      icon: Icons.schedule_rounded,
+                      label: _formatTimeRange(event.startAt, event.endAt),
+                    ),
+                    _SignalChip(
+                      icon: Icons.sports_tennis_rounded,
+                      label: _eventTypeLabel(event.eventType),
+                    ),
+                  ],
                 ),
               ],
             ),

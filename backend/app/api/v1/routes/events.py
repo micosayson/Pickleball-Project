@@ -7,6 +7,8 @@ from app.api.v1.deps import get_current_principal, get_tenant_context
 from app.core.security import Principal
 from app.core.tenancy import TenantContext
 from app.db.session import get_db
+from app.modules.event_queue.schemas import PlayerEventStatusRead
+from app.modules.event_queue.service import EventQueueService
 from app.modules.events.repository import EventRepository
 from app.modules.events.schemas import EventCreate, EventRead, EventUpdate
 from app.modules.events.service import EventService
@@ -20,13 +22,14 @@ def _service(db: Session) -> EventService:
 
 @router.get("", response_model=list[EventRead])
 def list_events(
+    court_id: UUID | None = None,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     _: Principal = Depends(get_current_principal),
     scope: TenantContext = Depends(get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    return _service(db).list_events(scope, limit=limit, offset=offset)
+    return _service(db).list_events(scope, court_id=court_id, limit=limit, offset=offset)
 
 
 @router.post("", response_model=EventRead, status_code=status.HTTP_201_CREATED)
@@ -37,6 +40,36 @@ def create_event(
     db: Session = Depends(get_db),
 ):
     return _service(db).create_event(payload, scope)
+
+
+@router.post("/{event_id}/check-in", response_model=PlayerEventStatusRead)
+def check_in_event(
+    event_id: UUID,
+    _: Principal = Depends(get_current_principal),
+    scope: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    return EventQueueService(db).check_in_event(event_id, scope)
+
+
+@router.get("/{event_id}/me/status", response_model=PlayerEventStatusRead)
+def read_my_event_status(
+    event_id: UUID,
+    _: Principal = Depends(get_current_principal),
+    scope: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    return EventQueueService(db).get_player_status(event_id, scope)
+
+
+@router.post("/{event_id}/leave", response_model=PlayerEventStatusRead)
+def leave_event(
+    event_id: UUID,
+    _: Principal = Depends(get_current_principal),
+    scope: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    return EventQueueService(db).leave_event(event_id, scope)
 
 
 @router.get("/{event_id}", response_model=EventRead)

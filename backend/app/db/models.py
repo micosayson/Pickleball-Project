@@ -1,6 +1,8 @@
+from app.modules.audit_logs.models import AuditLog
 from app.modules.court_memberships.models import CourtMembership
 from app.modules.court_staff.models import CourtStaff
 from app.modules.courts.models import Court
+from app.modules.event_queue.models import EventQueueEntry
 from app.modules.event_registrations.models import EventRegistration
 from app.modules.events.models import Event
 from app.modules.invitations.models import Invitation
@@ -14,11 +16,13 @@ from app.modules.users.models import User
 
 __all__ = [
     "User",
+    "AuditLog",
     "Court",
     "CourtMembership",
     "CourtStaff",
     "Invitation",
     "Event",
+    "EventQueueEntry",
     "EventRegistration",
     "Match",
     "MatchParticipant",

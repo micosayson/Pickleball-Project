@@ -1,8 +1,11 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
 
+from app.core.audit import add_audit_log
 from app.core.tenancy import TenantContext
+from app.modules.match_participants.models import MatchParticipant
 from app.modules.matches.models import Match
 from app.modules.matches.repository import MatchRepository
 from app.modules.matches.schemas import MatchCreate, MatchUpdate
@@ -49,3 +52,48 @@ class MatchService:
     def delete_match(self, match_id: UUID, scope: TenantContext) -> None:
         match = self.get_match(match_id, scope)
         self.repository.delete(match)
+
+    def start_match(self, match_id: UUID, scope: TenantContext) -> Match:
+        user_id = self._backend_user_id(scope)
+        match = self.get_match(match_id, scope)
+        if not scope.can_operate_court(str(match.court_id)):
+            participant = (
+                self.repository.db.query(MatchParticipant)
+                .filter(
+                    MatchParticipant.match_id == match.id,
+                    MatchParticipant.user_id == user_id,
+                    MatchParticipant.status == "active",
+                )
+                .one_or_none()
+            )
+            if participant is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only match participants or court operators can start this match",
+                )
+        if match.status == "assigned":
+            match.status = "active"
+            match.started_at = datetime.now(UTC)
+            match.updated_by_user_id = user_id
+            add_audit_log(
+                self.repository.db,
+                action="match.start",
+                entity_type="match",
+                actor_user_id=user_id,
+                entity_id=match.id,
+                court_id=match.court_id,
+                event_id=match.event_id,
+                match_id=match.id,
+            )
+            self.repository.db.add(match)
+            self.repository.db.commit()
+            self.repository.db.refresh(match)
+        return match
+
+    def _backend_user_id(self, scope: TenantContext) -> UUID:
+        if scope.backend_user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authenticated user profile is required",
+            )
+        return UUID(scope.backend_user_id)

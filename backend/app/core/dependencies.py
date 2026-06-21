@@ -29,14 +29,9 @@ def get_tenant_context(
     principal: Principal = Depends(get_current_principal),
     db: Session = Depends(get_db),
 ) -> TenantContext:
-    requested_tenant_id = _normalize_uuid_header(x_tenant_id, "X-Tenant-ID")
+    _normalize_uuid_header(x_tenant_id, "X-Tenant-ID")
     requested_court_id = _normalize_uuid_header(x_court_id, "X-Court-ID")
     user = UserRepository(db).get_by_supabase_user_id(principal.user_id)
-    if requested_tenant_id is not None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Tenant scope requires the tenant schema migration",
-        )
     if user is None:
         if requested_court_id is not None:
             raise HTTPException(
@@ -56,15 +51,14 @@ def get_tenant_context(
             principal=principal,
             user=user,
             is_platform_admin=is_platform_admin,
-            requested_tenant_id=requested_tenant_id,
             requested_court_id=requested_court_id,
         )
     except ProgrammingError:
         db.rollback()
-        if requested_tenant_id is not None or requested_court_id is not None:
+        if requested_court_id is not None:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Tenant schema is not available in the database",
+                detail="Court scope is not available in the database",
             )
         return TenantContext(
             user_id=principal.user_id,
@@ -79,7 +73,6 @@ def _resolve_database_tenant_context(
     principal: Principal,
     user,
     is_platform_admin: bool,
-    requested_tenant_id: str | None,
     requested_court_id: str | None,
 ) -> TenantContext:
     if is_platform_admin:
@@ -104,7 +97,10 @@ def _resolve_database_tenant_context(
         .all()
     )
 
-    allowed_court_ids = {str(row[0]) for row in [*owned_courts, *staff_courts, *member_courts]}
+    owned_court_ids = {str(row[0]) for row in owned_courts}
+    staff_court_ids = {str(row[0]) for row in staff_courts}
+    member_court_ids = {str(row[0]) for row in member_courts}
+    allowed_court_ids = owned_court_ids | staff_court_ids | member_court_ids
     if requested_court_id is not None and requested_court_id not in allowed_court_ids:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -117,6 +113,9 @@ def _resolve_database_tenant_context(
         backend_user_id=str(user.id),
         platform_role=principal.platform_role,
         allowed_court_ids=tuple(sorted(allowed_court_ids)),
+        owned_court_ids=tuple(sorted(owned_court_ids)),
+        staff_court_ids=tuple(sorted(staff_court_ids)),
+        member_court_ids=tuple(sorted(member_court_ids)),
     )
 
 

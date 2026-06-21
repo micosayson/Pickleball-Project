@@ -18,8 +18,8 @@ class _SessionDetailsPage extends StatelessWidget {
     return Column(
       children: [
         _PageHeader(
-          title: 'Session details',
-          detail: 'Confirm the session, then check in when you are at court.',
+          title: 'Session Details',
+          detail: '${court.name} - ${_eventTypeLabel(event.eventType)}',
           icon: Icons.fact_check_rounded,
           onBack: onBack,
         ),

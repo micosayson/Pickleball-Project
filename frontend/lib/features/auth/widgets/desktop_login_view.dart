@@ -20,8 +20,8 @@ class DesktopLoginView extends StatelessWidget {
                 width: double.infinity,
                 height: double.infinity,
               ),
-              Container(color: Colors.black.withOpacity(0.55)),
-              Container(color: DesignColors.courtGreen.withOpacity(0.36)),
+              Container(color: Colors.black.withValues(alpha: 0.55)),
+              Container(color: DesignColors.courtGreen.withValues(alpha: 0.36)),
               Padding(
                 padding: const EdgeInsets.all(64.0),
                 child: Column(
@@ -33,7 +33,9 @@ class DesktopLoginView extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(8.0),
                           decoration: BoxDecoration(
-                            color: DesignColors.freshGreen.withOpacity(0.88),
+                            color: DesignColors.freshGreen.withValues(
+                              alpha: 0.88,
+                            ),
                             borderRadius: BorderRadius.circular(12.0),
                           ),
                           child: const Icon(
@@ -44,7 +46,7 @@ class DesktopLoginView extends StatelessWidget {
                         ),
                         const SizedBox(width: 12.0),
                         const Text(
-                          'Plaqora',
+                          'RallyHub',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 28.0,
@@ -68,7 +70,7 @@ class DesktopLoginView extends StatelessWidget {
                     ),
                     const SizedBox(height: 20.0),
                     Text(
-                      'Connect with athletes nearby, join events, book courts, and track your ratings. Experience the game at a whole new level.',
+                      'Discover courts nearby, join open play, and track your match history from live results.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 18.0,
@@ -102,7 +104,7 @@ class DesktopLoginView extends StatelessWidget {
                     children: [
                       AuthHeader(
                         isDesktop: true,
-                        title: 'Welcome Back!',
+                        title: 'Welcome back',
                         subtitle: 'Log in to keep the rally going.',
                       ),
                       SizedBox(height: 36.0),

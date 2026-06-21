@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/styles/design_tokens.dart';
 import '../pages/onboarding_page.dart';
 import '../../home/pages/home_placeholder_page.dart';
 
@@ -16,11 +17,9 @@ class AuthGate extends StatelessWidget {
         // Show a loader while we wait for initial auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            backgroundColor: Color(0xFFF9FBF9),
+            backgroundColor: Color(0xFF050604),
             body: Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF4F6F52),
-              ),
+              child: CircularProgressIndicator(color: DesignColors.freshGreen),
             ),
           );
         }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/styles/design_tokens.dart';
 import 'auth_layout.dart';
 
 class DesktopRegisterView extends StatelessWidget {
@@ -20,7 +21,7 @@ class DesktopRegisterView extends StatelessWidget {
                 height: double.infinity,
               ),
               Container(color: Colors.black.withValues(alpha: 0.55)),
-              Container(color: const Color(0x734F6F52)),
+              Container(color: DesignColors.courtGreen.withValues(alpha: 0.42)),
               Padding(
                 padding: const EdgeInsets.all(64.0),
                 child: Column(
@@ -32,18 +33,18 @@ class DesktopRegisterView extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(8.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFA8C686),
+                            color: DesignColors.freshGreen,
                             borderRadius: BorderRadius.circular(12.0),
                           ),
                           child: const Icon(
                             Icons.sports_tennis_rounded,
-                            color: Color(0xFF4F6F52),
+                            color: DesignColors.ink,
                             size: 28.0,
                           ),
                         ),
                         const SizedBox(width: 12.0),
                         const Text(
-                          'Plaqora',
+                          'RallyHub',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 28.0,
@@ -67,7 +68,7 @@ class DesktopRegisterView extends StatelessWidget {
                     ),
                     const SizedBox(height: 20.0),
                     Text(
-                      'Connect with athletes nearby, join events, book courts, and track your ratings. Experience the game at a whole new level.',
+                      'Discover courts nearby, join open play, and track your match history from live results.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 18.0,
@@ -86,7 +87,7 @@ class DesktopRegisterView extends StatelessWidget {
         Expanded(
           flex: 45,
           child: Container(
-            color: const Color(0xFFF9FBF9),
+            color: DesignColors.chalk,
             child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -101,7 +102,7 @@ class DesktopRegisterView extends StatelessWidget {
                     children: [
                       AuthHeader(
                         isDesktop: true,
-                        title: 'Join Plaqora',
+                        title: 'Join RallyHub',
                         subtitle: 'Sign up to start playing.',
                       ),
                       SizedBox(height: 36.0),

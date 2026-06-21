@@ -42,23 +42,23 @@ class AuthHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-                Container(
+              Container(
                 padding: const EdgeInsets.all(6.0),
                 decoration: BoxDecoration(
-                  color: DesignColors.courtGreen.withOpacity(0.08),
+                  color: DesignColors.freshGreen,
                   borderRadius: BorderRadius.circular(10.0),
                 ),
                 child: const Icon(
                   Icons.sports_tennis_rounded,
-                  color: DesignColors.courtGreen,
+                  color: DesignColors.ink,
                   size: 24.0,
                 ),
               ),
               const SizedBox(width: 8.0),
-                const Text(
-                'Plaqora',
+              const Text(
+                'RallyHub',
                 style: TextStyle(
-                  color: Color(0xFF4F6F52),
+                  color: DesignColors.ink,
                   fontSize: 24.0,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
@@ -72,7 +72,7 @@ class AuthHeader extends StatelessWidget {
           title,
           textAlign: isDesktop ? TextAlign.left : TextAlign.center,
           style: TextStyle(
-            color: DesignColors.courtGreen,
+            color: DesignColors.ink,
             fontSize: isDesktop ? 36.0 : 28.0,
             fontWeight: FontWeight.w900,
             letterSpacing: 0,
@@ -83,10 +83,10 @@ class AuthHeader extends StatelessWidget {
           subtitle,
           textAlign: isDesktop ? TextAlign.left : TextAlign.center,
           style: TextStyle(
-              color: DesignColors.muted,
-              fontSize: isDesktop ? 16.0 : 14.5,
-              fontWeight: FontWeight.w500,
-            ),
+            color: DesignColors.muted,
+            fontSize: isDesktop ? 16.0 : 14.5,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -177,7 +177,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
           const Text(
             'Email',
             style: TextStyle(
-              color: Color(0xFF4F6F52),
+              color: DesignColors.courtGreen,
               fontSize: 14.0,
               fontWeight: FontWeight.w700,
             ),
@@ -193,11 +193,11 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
               prefixIcon: const Icon(
                 Icons.email_outlined,
-                color: Color(0xFF739072),
+                color: DesignColors.muted,
                 size: 20.0,
               ),
               filled: true,
-              fillColor: const Color(0xFFF2F5F2),
+              fillColor: const Color(0xFFFFFFF4),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
@@ -223,7 +223,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               const Text(
                 'Password',
                 style: TextStyle(
-                  color: Color(0xFF4F6F52),
+                  color: DesignColors.courtGreen,
                   fontSize: 14.0,
                   fontWeight: FontWeight.w700,
                 ),
@@ -243,7 +243,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
               prefixIcon: const Icon(
                 Icons.lock_outlined,
-                color: Color(0xFF739072),
+                color: DesignColors.muted,
                 size: 20.0,
               ),
               suffixIcon: IconButton(
@@ -251,7 +251,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                   _obscurePassword
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
-                  color: const Color(0xFF739072),
+                  color: DesignColors.muted,
                   size: 20.0,
                 ),
                 onPressed: () {
@@ -261,7 +261,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                 },
               ),
               filled: true,
-              fillColor: const Color(0xFFF2F5F2),
+              fillColor: const Color(0xFFFFFFF4),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
@@ -286,13 +286,13 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
             child: ElevatedButton(
               onPressed: canSubmit ? _submit : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F6F52),
-                foregroundColor: Colors.white,
+                backgroundColor: DesignColors.freshGreen,
+                foregroundColor: DesignColors.ink,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.0),
                 ),
-                elevation: 2.0,
-                shadowColor: const Color(0xFF4F6F52).withValues(alpha: 0.4),
+                elevation: 0,
+                shadowColor: Colors.transparent,
               ),
               child: _isLoading
                   ? const SizedBox(
@@ -300,7 +300,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                       height: 22.0,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        color: Colors.white,
+                        color: DesignColors.ink,
                       ),
                     )
                   : const Text(
@@ -308,7 +308,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0,
                       ),
                     ),
             ),
@@ -384,7 +384,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           const SnackBar(
             content: Text('Account created. Confirm your email, then log in.'),
             duration: Duration(seconds: 5),
-            backgroundColor: Color(0xFF4F6F52),
+            backgroundColor: DesignColors.courtGreen,
           ),
         );
         Navigator.of(context).pushAndRemoveUntil(
@@ -440,7 +440,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           const Text(
             'Full Name',
             style: TextStyle(
-              color: Color(0xFF4F6F52),
+              color: DesignColors.courtGreen,
               fontSize: 14.0,
               fontWeight: FontWeight.w700,
             ),
@@ -456,11 +456,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
               prefixIcon: const Icon(
                 Icons.person_outline,
-                color: Color(0xFF739072),
+                color: DesignColors.muted,
                 size: 20.0,
               ),
               filled: true,
-              fillColor: const Color(0xFFF2F5F2),
+              fillColor: const Color(0xFFFFFFF4),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
@@ -480,7 +480,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           const Text(
             'Email',
             style: TextStyle(
-              color: Color(0xFF4F6F52),
+              color: DesignColors.courtGreen,
               fontSize: 14.0,
               fontWeight: FontWeight.w700,
             ),
@@ -496,11 +496,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
               prefixIcon: const Icon(
                 Icons.email_outlined,
-                color: Color(0xFF739072),
+                color: DesignColors.muted,
                 size: 20.0,
               ),
               filled: true,
-              fillColor: const Color(0xFFF2F5F2),
+              fillColor: const Color(0xFFFFFFF4),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
@@ -523,7 +523,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           const Text(
             'Password',
             style: TextStyle(
-              color: Color(0xFF4F6F52),
+              color: DesignColors.courtGreen,
               fontSize: 14.0,
               fontWeight: FontWeight.w700,
             ),
@@ -539,7 +539,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
               prefixIcon: const Icon(
                 Icons.lock_outlined,
-                color: Color(0xFF739072),
+                color: DesignColors.muted,
                 size: 20.0,
               ),
               suffixIcon: IconButton(
@@ -547,7 +547,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                   _obscurePassword
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
-                  color: const Color(0xFF739072),
+                  color: DesignColors.muted,
                   size: 20.0,
                 ),
                 onPressed: () {
@@ -557,7 +557,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                 },
               ),
               filled: true,
-              fillColor: const Color(0xFFF2F5F2),
+              fillColor: const Color(0xFFFFFFF4),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
@@ -580,7 +580,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
           const Text(
             'Confirm Password',
             style: TextStyle(
-              color: Color(0xFF4F6F52),
+              color: DesignColors.courtGreen,
               fontSize: 14.0,
               fontWeight: FontWeight.w700,
             ),
@@ -597,7 +597,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
               prefixIcon: const Icon(
                 Icons.lock_outlined,
-                color: Color(0xFF739072),
+                color: DesignColors.muted,
                 size: 20.0,
               ),
               suffixIcon: IconButton(
@@ -605,7 +605,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                   _obscureConfirmPassword
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
-                  color: const Color(0xFF739072),
+                  color: DesignColors.muted,
                   size: 20.0,
                 ),
                 onPressed: () {
@@ -615,7 +615,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                 },
               ),
               filled: true,
-              fillColor: const Color(0xFFF2F5F2),
+              fillColor: const Color(0xFFFFFFF4),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
@@ -640,13 +640,13 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             child: ElevatedButton(
               onPressed: canSubmit ? _submit : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F6F52),
-                foregroundColor: Colors.white,
+                backgroundColor: DesignColors.freshGreen,
+                foregroundColor: DesignColors.ink,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.0),
                 ),
-                elevation: 2.0,
-                shadowColor: const Color(0xFF4F6F52).withValues(alpha: 0.4),
+                elevation: 0,
+                shadowColor: Colors.transparent,
               ),
               child: _isLoading
                   ? const SizedBox(
@@ -654,7 +654,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                       height: 22.0,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        color: Colors.white,
+                        color: DesignColors.ink,
                       ),
                     )
                   : const Text(
@@ -662,7 +662,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                       style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0,
                       ),
                     ),
             ),
@@ -700,17 +700,15 @@ class SocialLogins extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14.0),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F5F2),
+        color: const Color(0xFFFFFFF4),
         borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(
-          color: const Color(0xFF739072).withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: DesignColors.muted.withValues(alpha: 0.2)),
       ),
       child: const Row(
         children: [
           Icon(
             Icons.lock_outline_rounded,
-            color: Color(0xFF4F6F52),
+            color: DesignColors.courtGreen,
             size: 20.0,
           ),
           SizedBox(width: 10.0),
@@ -718,7 +716,7 @@ class SocialLogins extends StatelessWidget {
             child: Text(
               'Secure email sign-in with Supabase Auth',
               style: TextStyle(
-                color: Color(0xFF4F6F52),
+                color: DesignColors.courtGreen,
                 fontSize: 13.0,
                 fontWeight: FontWeight.w700,
               ),
@@ -735,17 +733,19 @@ class AuthRegisterFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const Text(
-          "Don't have an account? ",
+          "Don't have an account?",
           style: TextStyle(
-            color: Color(0xFF739072),
+            color: DesignColors.muted,
             fontSize: 14.0,
             fontWeight: FontWeight.w500,
           ),
         ),
+        const SizedBox(width: 4.0),
         GestureDetector(
           onTap: () {
             Navigator.pushReplacement(
@@ -756,7 +756,7 @@ class AuthRegisterFooter extends StatelessWidget {
           child: const Text(
             'Create account',
             style: TextStyle(
-              color: Color(0xFF4F6F52),
+              color: DesignColors.courtGreen,
               fontWeight: FontWeight.w700,
               fontSize: 14.0,
               decoration: TextDecoration.underline,
@@ -773,17 +773,19 @@ class AuthLoginFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const Text(
-          "Already have an account? ",
+          "Already have an account?",
           style: TextStyle(
-            color: Color(0xFF739072),
+            color: DesignColors.muted,
             fontSize: 14.0,
             fontWeight: FontWeight.w500,
           ),
         ),
+        const SizedBox(width: 4.0),
         GestureDetector(
           onTap: () {
             Navigator.pushReplacement(
@@ -794,7 +796,7 @@ class AuthLoginFooter extends StatelessWidget {
           child: const Text(
             'Log In',
             style: TextStyle(
-              color: Color(0xFF4F6F52),
+              color: DesignColors.courtGreen,
               fontWeight: FontWeight.w700,
               fontSize: 14.0,
               decoration: TextDecoration.underline,

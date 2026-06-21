@@ -7,12 +7,10 @@ class _PlayFlowPage extends StatelessWidget {
     required this.courtEventsFuture,
     required this.selectedSession,
     required this.activeSession,
-    required this.activeRegistration,
-    required this.prototypeMatch,
-    required this.matchFinished,
+    required this.activeStatus,
     required this.playPage,
     required this.joinLobby,
-    required this.onMatchFinished,
+    required this.onSubmitScore,
     required this.onOpenCourts,
     required this.onShowStatus,
     required this.onShowSessions,
@@ -21,7 +19,7 @@ class _PlayFlowPage extends StatelessWidget {
     required this.onShowUpcomingMatch,
     required this.onGoToCourt,
     required this.onShowMatchResult,
-    required this.onReturnToQueue,
+    required this.onRefreshStatus,
     required this.onLeaveCourt,
   });
 
@@ -30,25 +28,28 @@ class _PlayFlowPage extends StatelessWidget {
   final Future<List<EventSummary>>? courtEventsFuture;
   final EventSummary? selectedSession;
   final EventSummary? activeSession;
-  final EventRegistrationSummary? activeRegistration;
-  final _PrototypeMatch prototypeMatch;
-  final bool matchFinished;
+  final PlayerEventStatusSummary? activeStatus;
   final _PlayPage playPage;
   final Future<void> Function(EventSummary) joinLobby;
-  final VoidCallback onMatchFinished;
+  final Future<void> Function(int teamOneScore, int teamTwoScore) onSubmitScore;
   final VoidCallback onOpenCourts;
   final VoidCallback onShowStatus;
   final VoidCallback onShowSessions;
   final void Function(EventSummary) onSelectSession;
   final VoidCallback onShowMySession;
   final VoidCallback onShowUpcomingMatch;
-  final VoidCallback onGoToCourt;
+  final Future<void> Function() onGoToCourt;
   final VoidCallback onShowMatchResult;
-  final VoidCallback onReturnToQueue;
-  final VoidCallback onLeaveCourt;
+  final Future<void> Function() onRefreshStatus;
+  final Future<void> Function() onLeaveCourt;
 
   @override
   Widget build(BuildContext context) {
+    final match = activeStatus?.match;
+    final isWaitingVerification =
+        activeStatus?.isWaitingVerification == true ||
+        playPage == _PlayPage.waitingVerification;
+
     if (playPage == _PlayPage.courtSessions &&
         selectedCourt != null &&
         courtEventsFuture != null) {
@@ -78,46 +79,53 @@ class _PlayFlowPage extends StatelessWidget {
       return _MySessionPage(
         court: selectedCourt!,
         session: activeSession!,
-        registration: activeRegistration,
-        prototypeMatch: prototypeMatch,
-        onShowUpcomingMatch: onShowUpcomingMatch,
+        status: activeStatus,
+        onShowUpcomingMatch: match == null ? null : onShowUpcomingMatch,
         onLeaveCourt: onLeaveCourt,
       );
     }
 
-    if (playPage == _PlayPage.upcomingMatch && selectedCourt != null) {
+    if (playPage == _PlayPage.upcomingMatch &&
+        selectedCourt != null &&
+        match != null) {
       return _UpcomingMatchPage(
         court: selectedCourt!,
-        prototypeMatch: prototypeMatch,
+        match: match,
         onBack: onShowStatus,
         onGoToCourt: onGoToCourt,
         onLeaveCourt: onLeaveCourt,
       );
     }
 
-    if (playPage == _PlayPage.activeMatch && selectedCourt != null) {
+    if (playPage == _PlayPage.activeMatch &&
+        selectedCourt != null &&
+        match != null) {
       return _ActiveMatchPage(
         court: selectedCourt!,
-        prototypeMatch: prototypeMatch,
+        match: match,
         onShowMatchResult: onShowMatchResult,
         onLeaveCourt: onLeaveCourt,
       );
     }
 
-    if (playPage == _PlayPage.matchResult && selectedCourt != null) {
+    if (playPage == _PlayPage.matchResult &&
+        selectedCourt != null &&
+        match != null) {
       return _MatchResultPage(
         court: selectedCourt!,
-        prototypeMatch: prototypeMatch,
-        matchFinished: matchFinished,
-        onMatchFinished: onMatchFinished,
+        match: match,
+        onSubmitScore: onSubmitScore,
       );
     }
 
-    if (playPage == _PlayPage.waitingVerification && selectedCourt != null) {
+    if (playPage == _PlayPage.waitingVerification &&
+        selectedCourt != null &&
+        match != null) {
       return _WaitingVerificationPage(
         court: selectedCourt!,
-        prototypeMatch: prototypeMatch,
-        onReturnToQueue: onReturnToQueue,
+        match: match,
+        scoreSubmission: activeStatus?.scoreSubmission,
+        onRefreshStatus: onRefreshStatus,
       );
     }
 
@@ -125,10 +133,15 @@ class _PlayFlowPage extends StatelessWidget {
       fullName: fullName,
       selectedCourt: selectedCourt,
       activeSession: activeSession,
-      matchFinished: matchFinished,
+      isWaitingVerification: isWaitingVerification,
+      hasMatch: match != null,
       onOpenCourts: onOpenCourts,
       onShowSessions: onShowSessions,
-      onShowMySession: matchFinished ? onReturnToQueue : onShowMySession,
+      onShowMySession: isWaitingVerification
+          ? () {
+              onRefreshStatus();
+            }
+          : onShowMySession,
     );
   }
 }

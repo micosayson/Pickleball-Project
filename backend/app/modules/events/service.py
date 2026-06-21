@@ -12,8 +12,15 @@ class EventService:
     def __init__(self, repository: EventRepository) -> None:
         self.repository = repository
 
-    def list_events(self, scope: TenantContext, *, limit: int, offset: int) -> list[Event]:
-        return self.repository.list(scope, limit=limit, offset=offset)
+    def list_events(
+        self,
+        scope: TenantContext,
+        *,
+        court_id: UUID | None = None,
+        limit: int,
+        offset: int,
+    ) -> list[Event]:
+        return self.repository.list(scope, court_id=court_id, limit=limit, offset=offset)
 
     def get_event(self, event_id: UUID, scope: TenantContext) -> Event:
         event = self.repository.get_by_id(event_id, scope)

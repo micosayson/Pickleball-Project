@@ -40,6 +40,16 @@ def create_match(
     return _service(db).create_match(payload, scope)
 
 
+@router.post("/{match_id}/start", response_model=MatchRead)
+def start_match(
+    match_id: UUID,
+    _: Principal = Depends(get_current_principal),
+    scope: TenantContext = Depends(get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    return _service(db).start_match(match_id, scope)
+
+
 @router.get("/{match_id}", response_model=MatchRead)
 def read_match(
     match_id: UUID,

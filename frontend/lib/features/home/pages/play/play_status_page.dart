@@ -5,7 +5,8 @@ class _PlayStatusPage extends StatelessWidget {
     required this.fullName,
     required this.selectedCourt,
     required this.activeSession,
-    required this.matchFinished,
+    required this.isWaitingVerification,
+    required this.hasMatch,
     required this.onOpenCourts,
     required this.onShowSessions,
     required this.onShowMySession,
@@ -14,7 +15,8 @@ class _PlayStatusPage extends StatelessWidget {
   final String fullName;
   final CourtSummary? selectedCourt;
   final EventSummary? activeSession;
-  final bool matchFinished;
+  final bool isWaitingVerification;
+  final bool hasMatch;
   final VoidCallback onOpenCourts;
   final VoidCallback onShowSessions;
   final VoidCallback onShowMySession;
@@ -23,13 +25,17 @@ class _PlayStatusPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = activeSession == null
         ? 'Ready for the next rally, $fullName?'
-        : matchFinished
+        : isWaitingVerification
         ? 'Your match is waiting for verification'
+        : hasMatch
+        ? 'Your match is ready'
         : 'You are checked in and queued';
     final detail = activeSession == null
         ? 'Choose a court, review its sessions, then check in when you arrive.'
-        : matchFinished
+        : isWaitingVerification
         ? 'After the queue master verifies the result, you return to the queue.'
+        : hasMatch
+        ? 'Open your session to view teams and head to court.'
         : 'Stay in My session until the next match assignment is ready.';
 
     return Column(
@@ -47,6 +53,13 @@ class _PlayStatusPage extends StatelessWidget {
                 title: 'Play status',
               ),
               const SizedBox(height: 14),
+              _MatchFlowStepper(
+                selectedCourt: selectedCourt,
+                activeSession: activeSession,
+                hasMatch: hasMatch,
+                isWaitingVerification: isWaitingVerification,
+              ),
+              const SizedBox(height: 16),
               _StatusActionCard(
                 icon: selectedCourt == null
                     ? Icons.location_on_rounded
@@ -67,8 +80,8 @@ class _PlayStatusPage extends StatelessWidget {
                     ? 'Choose court'
                     : activeSession == null
                     ? 'View sessions'
-                    : matchFinished
-                    ? 'Return to queue'
+                    : isWaitingVerification
+                    ? 'Refresh status'
                     : 'View my session',
                 onPressed: selectedCourt == null
                     ? onOpenCourts

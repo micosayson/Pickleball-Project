@@ -28,3 +28,22 @@ class CourtRepository:
 
     def get_by_id(self, court_id):
         return self.db.get(Court, court_id)
+
+    def create(self, court: Court) -> Court:
+        self.db.add(court)
+        self.db.commit()
+        self.db.refresh(court)
+        return court
+
+    def update(self, court: Court, values: dict) -> Court:
+        for key, value in values.items():
+            setattr(court, key, value)
+        self.db.add(court)
+        self.db.commit()
+        self.db.refresh(court)
+        return court
+
+    def delete(self, court: Court) -> None:
+        court.status = "inactive"
+        self.db.add(court)
+        self.db.commit()

@@ -41,3 +41,17 @@ class ScoreSubmissionRepository:
 
     def get_by_id(self, score_submission_id):
         return self.db.get(ScoreSubmission, score_submission_id)
+
+    def create(self, score_submission: ScoreSubmission) -> ScoreSubmission:
+        self.db.add(score_submission)
+        self.db.commit()
+        self.db.refresh(score_submission)
+        return score_submission
+
+    def update(self, score_submission: ScoreSubmission, values: dict) -> ScoreSubmission:
+        for key, value in values.items():
+            setattr(score_submission, key, value)
+        self.db.add(score_submission)
+        self.db.commit()
+        self.db.refresh(score_submission)
+        return score_submission

@@ -1,18 +1,15 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/network/api_client.dart';
-import '../../../core/network/api_endpoints.dart';
+import '../../../core/navigation/app_routes.dart';
 import '../../auth/pages/login_page.dart';
 import '../../auth/services/auth_service.dart';
 import '../../courts/services/court_service.dart';
 import '../../events/services/event_service.dart';
+import 'court_details_page.dart';
 import 'dashboard_page.dart';
-import 'bookings_page.dart';
 import 'notifications_page.dart';
 import 'matches_list_page.dart';
-import 'court_details_page.dart';
 import 'profile_history_page.dart';
 
 part 'play/active_match_page.dart';
@@ -25,13 +22,14 @@ part 'play/session_details_page.dart';
 part 'play/upcoming_match_page.dart';
 part 'play/waiting_verification_page.dart';
 
-const _courtGreen = Color(0xFF315C3A);
-const _freshGreen = Color(0xFF78A85A);
-const _clay = Color(0xFFD37A46);
-const _ink = Color(0xFF17221B);
-const _muted = Color(0xFF6A7A70);
-const _chalk = Color(0xFFF7FAF5);
-const _line = Color(0xFFE1E9DE);
+const _courtGreen = Color(0xFF26300F);
+const _freshGreen = Color(0xFFD9FF00);
+const _clay = Color(0xFFB8E600);
+const _ink = Color(0xFF15180B);
+const _muted = Color(0xFF727763);
+const _chalk = Color(0xFFFCFCEB);
+const _paper = Color(0xFFFFFFF4);
+const _line = Color(0xFFE6E8C8);
 
 enum _PlayPage {
   status,
@@ -53,51 +51,32 @@ class HomePlaceholderPage extends StatefulWidget {
 
 class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   late final Future<List<CourtSummary>> _courtsFuture;
-  late final _PrototypeMatch _prototypeMatch;
   CourtSummary? _selectedCourt;
   Future<List<EventSummary>>? _courtEventsFuture;
   EventSummary? _selectedSession;
   EventSummary? _activeSession;
-  EventRegistrationSummary? _activeRegistration;
-  String _lastResult = 'Backend checks have not run yet.';
-  bool _isLoading = false;
-  bool _matchFinished = false;
+  PlayerEventStatusSummary? _activeStatus;
   int _selectedIndex = 0;
   _PlayPage _playPage = _PlayPage.status;
 
   @override
   void initState() {
     super.initState();
-    final courts = _PrototypeData.courts();
-    _prototypeMatch = _PrototypeData.match();
-    _courtsFuture = Future.value(courts);
+    _courtsFuture = const CourtService().listCourts(limit: 12);
   }
 
   Future<void> _runRequest(
     Future<dynamic> Function() request,
     String label,
   ) async {
-    setState(() {
-      _isLoading = true;
-      _lastResult = 'Running $label...';
-    });
-
     try {
-      final response = await request();
+      await request();
       if (!mounted) return;
-      final result = response is Response ? response.data : response;
-      setState(() {
-        _lastResult = '$label succeeded: $result';
-      });
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _lastResult = '$label failed: $error';
-      });
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$label failed. Check the backend and retry.')),
+      );
     }
   }
 
@@ -108,151 +87,236 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     final email = user?.email ?? '';
 
     return Scaffold(
+      extendBody: true,
       backgroundColor: _chalk,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 900;
             final content = switch (_selectedIndex) {
-              0 => _PlayTab(
+              0 => _DiscoverOrFlowTab(
                 fullName: fullName,
                 selectedCourt: _selectedCourt,
                 courtEventsFuture: _courtEventsFuture,
                 selectedSession: _selectedSession,
                 activeSession: _activeSession,
-                activeRegistration: _activeRegistration,
-                prototypeMatch: _prototypeMatch,
-                matchFinished: _matchFinished,
+                activeStatus: _activeStatus,
                 playPage: _playPage,
+                courtsFuture: _courtsFuture,
                 joinLobby: _joinLobby,
-                onMatchFinished: _markMatchFinished,
-                onOpenCourts: () => setState(() => _selectedIndex = 1),
+                onSubmitScore: _submitScore,
+                onOpenCourts: _showDiscoverCourts,
                 onShowStatus: () => _showPlayPage(_PlayPage.status),
                 onShowSessions: () => _showPlayPage(_PlayPage.courtSessions),
                 onSelectSession: _selectSession,
                 onShowMySession: () => _showPlayPage(_PlayPage.mySession),
                 onShowUpcomingMatch: () =>
                     _showPlayPage(_PlayPage.upcomingMatch),
-                onGoToCourt: () => _showPlayPage(_PlayPage.activeMatch),
+                onGoToCourt: _goToCourt,
                 onShowMatchResult: () => _showPlayPage(_PlayPage.matchResult),
-                onReturnToQueue: _returnToQueue,
+                onRefreshStatus: _refreshActiveStatus,
                 onLeaveCourt: _leaveCourt,
+                selectCourt: _selectCourt,
+                openCourtDetails: _openCourtDetails,
               ),
-              1 => _CourtsTab(
+              1 => _DiscoverCourtsTab(
                 courtsFuture: _courtsFuture,
                 selectCourt: _selectCourt,
+                openCourtDetails: _openCourtDetails,
               ),
-              2 => _ProfileTab(fullName: fullName, email: email, user: user),
-              _ => _SettingsTab(
-                isWide: isWide,
-                isLoading: _isLoading,
-                lastResult: _lastResult,
-                fullName: fullName,
-                user: user,
-                runRequest: _runRequest,
+              2 => const _FigmaFrameTab(
+                title: 'Matches',
+                detail:
+                    'Assigned, active, and verified match records from the open-play flow.',
+                icon: Icons.sports_score_rounded,
+                child: MatchesListContent(),
+              ),
+              3 => const _FigmaFrameTab(
+                title: 'Sessions',
+                detail:
+                    'Today schedule, active queues, and upcoming court assignments.',
+                icon: Icons.calendar_month_rounded,
+                child: DashboardContent(),
+              ),
+              _ => const _FigmaFrameTab(
+                title: 'Profile & History',
+                detail:
+                    'Identity, account context, player history, ratings, and deferred ranking states.',
+                icon: Icons.person_pin_circle_rounded,
+                child: ProfileHistoryContent(),
               ),
             };
 
-            return CustomScrollView(
-              key: ValueKey(
-                '$_selectedIndex-$_playPage-${_selectedCourt?.id}-${_selectedSession?.id}-${_activeSession?.id}',
+            return DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFF7F8E7), _chalk, _paper],
+                  stops: [0, 0.46, 1],
+                ),
               ),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
+              child: CustomScrollView(
+                key: ValueKey(
+                  '$_selectedIndex-$_playPage-${_selectedCourt?.id}-${_selectedSession?.id}-${_activeSession?.id}',
+                ),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        isWide ? 40 : 18,
+                        16,
+                        isWide ? 40 : 18,
+                        16,
+                      ),
+                      child: Center(
+                        child: _HomeHeader(
+                          fullName: fullName,
+                          email: email,
+                          selectedIndex: _selectedIndex,
+                          onOpenNotifications: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsPage(),
+                                settings: const RouteSettings(
+                                  name: AppRoutes.notifications,
+                                ),
+                              ),
+                            );
+                          },
+                          onSignOut: () async {
+                            await AuthService().signOut();
+                            if (context.mounted) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginPage(),
+                                ),
+                                (route) => false,
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
                     padding: EdgeInsets.fromLTRB(
-                      isWide ? 40 : 20,
-                      18,
-                      isWide ? 40 : 20,
-                      18,
+                      isWide ? 40 : 18,
+                      0,
+                      isWide ? 40 : 18,
+                      96,
                     ),
-                    child: _HomeHeader(
-                      fullName: fullName,
-                      email: email,
-                      onSignOut: () async {
-                        await AuthService().signOut();
-                        if (context.mounted) {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginPage(),
-                            ),
-                            (route) => false,
-                          );
-                        }
-                      },
+                    sliver: SliverToBoxAdapter(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: isWide ? 1120 : 430,
+                          ),
+                          child: content,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(
-                    isWide ? 40 : 20,
-                    0,
-                    isWide ? 40 : 20,
-                    28,
-                  ),
-                  sliver: SliverToBoxAdapter(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1120),
-                      child: content,
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.sports_tennis_rounded),
-            label: 'Play',
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _paper,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _line),
+            boxShadow: [
+              BoxShadow(
+                color: _ink.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.location_on_rounded),
-            label: 'Courts',
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: NavigationBar(
+              height: 70,
+              elevation: 0,
+              backgroundColor: _paper,
+              indicatorColor: _freshGreen,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (index) {
+                setState(() => _selectedIndex = index);
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.sports_tennis_rounded),
+                  label: 'Play',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.location_on_rounded),
+                  label: 'Courts',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.sports_score_rounded),
+                  label: 'Matches',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.calendar_month_rounded),
+                  label: 'Sessions',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_rounded),
-            label: 'Settings',
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Future<void> _joinLobby(EventSummary event) {
     return _runRequest(() async {
-      final registration = _PrototypeData.joinLobby(event.id);
+      final status = await const EventService().joinLobby(event.id);
       if (mounted) {
         setState(() {
           _selectedSession = event;
           _activeSession = event;
-          _activeRegistration = registration;
-          _matchFinished = false;
+          _activeStatus = status;
           _playPage = _PlayPage.mySession;
         });
       }
-      return registration;
-    }, 'Join lobby');
+      return status;
+    }, 'Check in');
   }
 
-  void _markMatchFinished() {
-    setState(() {
-      _matchFinished = true;
-      _lastResult =
-          '${_prototypeMatch.matchNumber} marked finished. Waiting for verification.';
-      _playPage = _PlayPage.waitingVerification;
-    });
+  Future<void> _submitScore(int teamOneScore, int teamTwoScore) {
+    final match = _activeStatus?.match;
+    if (match == null || _selectedSession == null) {
+      return _runRequest(() async => 'No assigned match yet', 'Submit score');
+    }
+    return _runRequest(() async {
+      await const EventService().submitScore(
+        matchId: match.id,
+        teamOneScore: teamOneScore,
+        teamTwoScore: teamTwoScore,
+      );
+      final status = await const EventService().readStatus(
+        _selectedSession!.id,
+      );
+      if (mounted) {
+        setState(() {
+          _activeStatus = status;
+          _playPage = _PlayPage.waitingVerification;
+        });
+      }
+      return status;
+    }, 'Submit score');
   }
 
   void _selectSession(EventSummary event) {
@@ -270,63 +334,138 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     });
   }
 
-  void _returnToQueue() {
+  void _showDiscoverCourts() {
     setState(() {
-      _matchFinished = false;
-      _lastResult =
-          '${_prototypeMatch.matchNumber} verified. Player returned to queue.';
-      _playPage = _PlayPage.mySession;
+      _selectedCourt = null;
+      _courtEventsFuture = null;
+      _selectedSession = null;
+      _activeSession = null;
+      _activeStatus = null;
+      _playPage = _PlayPage.status;
       _selectedIndex = 0;
     });
   }
 
-  void _leaveCourt() {
-    setState(() {
-      _activeSession = null;
-      _activeRegistration = null;
-      _matchFinished = false;
-      _selectedSession = null;
-      _playPage = _selectedCourt == null
-          ? _PlayPage.status
-          : _PlayPage.courtSessions;
-      _selectedIndex = 0;
-      _lastResult = 'Left court. Mock queue state cleared.';
-    });
+  Future<void> _goToCourt() {
+    final match = _activeStatus?.match;
+    if (match == null || _selectedSession == null) {
+      return _runRequest(() async => 'No assigned match yet', 'Start match');
+    }
+    return _runRequest(() async {
+      await const EventService().startMatch(match.id);
+      final status = await const EventService().readStatus(
+        _selectedSession!.id,
+      );
+      if (mounted) {
+        setState(() {
+          _activeStatus = status;
+          _playPage = _PlayPage.activeMatch;
+        });
+      }
+      return status;
+    }, 'Start match');
+  }
+
+  Future<void> _refreshActiveStatus() {
+    if (_selectedSession == null) {
+      return _runRequest(() async => 'No active session', 'Refresh status');
+    }
+    return _runRequest(() async {
+      final status = await const EventService().readStatus(
+        _selectedSession!.id,
+      );
+      if (mounted) {
+        setState(() {
+          _activeStatus = status;
+          _playPage = status.isWaitingVerification
+              ? _PlayPage.waitingVerification
+              : _PlayPage.mySession;
+          _selectedIndex = 0;
+        });
+      }
+      return status;
+    }, 'Refresh status');
+  }
+
+  Future<void> _leaveCourt() {
+    if (_selectedSession == null) {
+      setState(() {
+        _activeSession = null;
+        _activeStatus = null;
+        _playPage = _selectedCourt == null
+            ? _PlayPage.status
+            : _PlayPage.courtSessions;
+        _selectedIndex = 0;
+      });
+      return Future.value();
+    }
+    return _runRequest(() async {
+      final status = await const EventService().leaveEvent(
+        _selectedSession!.id,
+      );
+      if (mounted) {
+        setState(() {
+          _activeSession = null;
+          _activeStatus = status;
+          _selectedSession = null;
+          _playPage = _selectedCourt == null
+              ? _PlayPage.status
+              : _PlayPage.courtSessions;
+          _selectedIndex = 0;
+        });
+      }
+      return status;
+    }, 'Leave court');
   }
 
   Future<void> _selectCourt(CourtSummary court) {
     return _runRequest(() async {
+      final eventsFuture = const EventService().listEvents(
+        courtId: court.id,
+        limit: 20,
+      );
       if (mounted) {
         setState(() {
           _selectedCourt = court;
-          _courtEventsFuture = Future.value(_PrototypeData.eventsForCourt(court.id));
+          _courtEventsFuture = eventsFuture;
           _selectedSession = null;
           _activeSession = null;
-          _activeRegistration = null;
-          _matchFinished = false;
+          _activeStatus = null;
           _playPage = _PlayPage.courtSessions;
           _selectedIndex = 0;
-          _lastResult = 'Selected ${court.name}. Mock sessions loaded.';
         });
       }
       return court;
     }, 'Court selected');
   }
+
+  void _openCourtDetails(CourtSummary court) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: AppRoutes.discoverCourts),
+        builder: (_) => CourtDetailsPage(
+          courtId: court.id,
+          onShowSessions: (court) {
+            _selectCourt(court);
+          },
+        ),
+      ),
+    );
+  }
 }
 
-class _PlayTab extends StatelessWidget {
-  const _PlayTab({
+class _DiscoverOrFlowTab extends StatelessWidget {
+  const _DiscoverOrFlowTab({
     required this.fullName,
     required this.selectedCourt,
     required this.courtEventsFuture,
     required this.selectedSession,
     required this.activeSession,
-    required this.activeRegistration,
-    required this.prototypeMatch,
-    required this.matchFinished,
+    required this.activeStatus,
     required this.playPage,
+    required this.courtsFuture,
     required this.joinLobby,
-    required this.onMatchFinished,
+    required this.onSubmitScore,
     required this.onOpenCourts,
     required this.onShowStatus,
     required this.onShowSessions,
@@ -335,8 +474,10 @@ class _PlayTab extends StatelessWidget {
     required this.onShowUpcomingMatch,
     required this.onGoToCourt,
     required this.onShowMatchResult,
-    required this.onReturnToQueue,
+    required this.onRefreshStatus,
     required this.onLeaveCourt,
+    required this.selectCourt,
+    required this.openCourtDetails,
   });
 
   final String fullName;
@@ -344,37 +485,50 @@ class _PlayTab extends StatelessWidget {
   final Future<List<EventSummary>>? courtEventsFuture;
   final EventSummary? selectedSession;
   final EventSummary? activeSession;
-  final EventRegistrationSummary? activeRegistration;
-  final _PrototypeMatch prototypeMatch;
-  final bool matchFinished;
+  final PlayerEventStatusSummary? activeStatus;
   final _PlayPage playPage;
+  final Future<List<CourtSummary>> courtsFuture;
   final Future<void> Function(EventSummary) joinLobby;
-  final VoidCallback onMatchFinished;
+  final Future<void> Function(int teamOneScore, int teamTwoScore) onSubmitScore;
   final VoidCallback onOpenCourts;
   final VoidCallback onShowStatus;
   final VoidCallback onShowSessions;
   final void Function(EventSummary) onSelectSession;
   final VoidCallback onShowMySession;
   final VoidCallback onShowUpcomingMatch;
-  final VoidCallback onGoToCourt;
+  final Future<void> Function() onGoToCourt;
   final VoidCallback onShowMatchResult;
-  final VoidCallback onReturnToQueue;
-  final VoidCallback onLeaveCourt;
+  final Future<void> Function() onRefreshStatus;
+  final Future<void> Function() onLeaveCourt;
+  final Future<void> Function(CourtSummary) selectCourt;
+  final void Function(CourtSummary) openCourtDetails;
 
   @override
   Widget build(BuildContext context) {
+    final shouldShowDiscover =
+        playPage == _PlayPage.status &&
+        selectedCourt == null &&
+        selectedSession == null &&
+        activeSession == null;
+
+    if (shouldShowDiscover) {
+      return _DiscoverCourtsTab(
+        courtsFuture: courtsFuture,
+        selectCourt: selectCourt,
+        openCourtDetails: openCourtDetails,
+      );
+    }
+
     return _PlayFlowPage(
       fullName: fullName,
       selectedCourt: selectedCourt,
       courtEventsFuture: courtEventsFuture,
       selectedSession: selectedSession,
       activeSession: activeSession,
-      activeRegistration: activeRegistration,
-      prototypeMatch: prototypeMatch,
-      matchFinished: matchFinished,
+      activeStatus: activeStatus,
       playPage: playPage,
       joinLobby: joinLobby,
-      onMatchFinished: onMatchFinished,
+      onSubmitScore: onSubmitScore,
       onOpenCourts: onOpenCourts,
       onShowStatus: onShowStatus,
       onShowSessions: onShowSessions,
@@ -383,233 +537,65 @@ class _PlayTab extends StatelessWidget {
       onShowUpcomingMatch: onShowUpcomingMatch,
       onGoToCourt: onGoToCourt,
       onShowMatchResult: onShowMatchResult,
-      onReturnToQueue: onReturnToQueue,
+      onRefreshStatus: onRefreshStatus,
       onLeaveCourt: onLeaveCourt,
     );
   }
 }
 
-class _CourtsTab extends StatelessWidget {
-  const _CourtsTab({required this.courtsFuture, required this.selectCourt});
+class _DiscoverCourtsTab extends StatelessWidget {
+  const _DiscoverCourtsTab({
+    required this.courtsFuture,
+    required this.selectCourt,
+    required this.openCourtDetails,
+  });
 
   final Future<List<CourtSummary>> courtsFuture;
   final Future<void> Function(CourtSummary) selectCourt;
+  final void Function(CourtSummary) openCourtDetails;
 
   @override
   Widget build(BuildContext context) {
-    return _CourtDiscoveryPanel(
-      courtsFuture: courtsFuture,
-      onSelectCourt: selectCourt,
-      maxItems: 12,
-    );
-  }
-}
-
-class _ProfileTab extends StatelessWidget {
-  const _ProfileTab({
-    required this.fullName,
-    required this.email,
-    required this.user,
-  });
-
-  final String fullName;
-  final String email;
-  final User? user;
-
-  @override
-  Widget build(BuildContext context) {
-    final role = user?.userMetadata?['platform_role']?.toString() ?? 'player';
-    final createdAt = user?.createdAt;
-
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(icon: Icons.person_rounded, title: 'Profile'),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: _courtGreen,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    fullName.isEmpty ? 'P' : fullName.characters.first,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fullName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _ink,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      email.isEmpty ? 'Signed in player' : email,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: _muted, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _ProfileRow(
-            icon: Icons.badge_rounded,
-            label: 'Role',
-            value: role.toUpperCase(),
-          ),
-          _ProfileRow(
-            icon: Icons.calendar_month_rounded,
-            label: 'Account created',
-            value: createdAt ?? 'Available after sync',
-          ),
-          _ProfileRow(
-            icon: Icons.speed_rounded,
-            label: 'Rating',
-            value: 'Connect ratings screen',
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.tonal(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DashboardPage())),
-                child: const Text('Dashboard'),
-              ),
-              FilledButton.tonal(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BookingsPage())),
-                child: const Text('Bookings'),
-              ),
-              FilledButton.tonal(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsPage())),
-                child: const Text('Notifications'),
-              ),
-              FilledButton.tonal(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MatchesListPage())),
-                child: const Text('Matches'),
-              ),
-              FilledButton.tonal(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileHistoryPage())),
-                child: const Text('Profile / History'),
-              ),
-              FilledButton.tonal(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CourtDetailsPage(courtId: 'skyline-courts'))),
-                child: const Text('Court details'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileRow extends StatelessWidget {
-  const _ProfileRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, color: _courtGreen, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(color: _muted, fontSize: 13.5),
-            ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _ink,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsTab extends StatelessWidget {
-  const _SettingsTab({
-    required this.isWide,
-    required this.isLoading,
-    required this.lastResult,
-    required this.fullName,
-    required this.user,
-    required this.runRequest,
-  });
-
-  final bool isWide;
-  final bool isLoading;
-  final String lastResult;
-  final String fullName;
-  final User? user;
-  final Future<void> Function(Future<dynamic> Function(), String) runRequest;
-
-  @override
-  Widget build(BuildContext context) {
-    final checks = _DeveloperChecks(
-      isLoading: isLoading,
-      lastResult: lastResult,
-      fullName: fullName,
-      user: user,
-      runRequest: runRequest,
-    );
-
-    if (isWide) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Expanded(flex: 4, child: _ReadinessCard()),
-          const SizedBox(width: 20),
-          Expanded(flex: 7, child: checks),
-        ],
-      );
-    }
-
     return Column(
-      children: [const _ReadinessCard(), const SizedBox(height: 16), checks],
+      children: [
+        const _PageHeader(
+          title: 'Courts',
+          detail: 'Choose where you want to play today.',
+          icon: Icons.location_on_rounded,
+        ),
+        const SizedBox(height: 16),
+        _CourtDiscoveryPanel(
+          courtsFuture: courtsFuture,
+          onSelectCourt: selectCourt,
+          onOpenDetails: openCourtDetails,
+          maxItems: 12,
+        ),
+      ],
+    );
+  }
+}
+
+class _FigmaFrameTab extends StatelessWidget {
+  const _FigmaFrameTab({
+    required this.title,
+    required this.detail,
+    required this.icon,
+    required this.child,
+  });
+
+  final String title;
+  final String detail;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _PageHeader(title: title, detail: detail, icon: icon),
+        const SizedBox(height: 16),
+        child,
+      ],
     );
   }
 }
@@ -618,55 +604,468 @@ class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.fullName,
     required this.email,
+    required this.selectedIndex,
+    required this.onOpenNotifications,
     required this.onSignOut,
   });
 
   final String fullName;
   final String email;
+  final int selectedIndex;
+  final VoidCallback onOpenNotifications;
   final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
+    final section = switch (selectedIndex) {
+      0 => 'Play',
+      1 => 'Courts',
+      2 => 'Matches',
+      3 => 'Sessions',
+      _ => 'Profile',
+    };
+
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 1120),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: _courtGreen,
-              borderRadius: BorderRadius.circular(8),
+      constraints: const BoxConstraints(maxWidth: 430),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: _chalk,
+          border: Border(bottom: BorderSide(color: _line)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: _freshGreen,
+                shape: BoxShape.circle,
+                border: Border.all(color: _courtGreen, width: 2),
+              ),
+              child: Center(
+                child: Text(
+                  fullName.trim().isEmpty
+                      ? 'P'
+                      : fullName.trim().characters.first.toUpperCase(),
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
             ),
-            child: const Icon(Icons.sports_tennis_rounded, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
+            Expanded(
+              child: Semantics(
+                label: 'RallyHub $section',
+                child: const Text(
+                  'RallyHub',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _courtGreen,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: onOpenNotifications,
+              tooltip: 'Notifications',
+              icon: const Icon(Icons.notifications_none_rounded),
+              color: _courtGreen,
+            ),
+            PopupMenuButton<String>(
+              tooltip: email.isEmpty ? fullName : email,
+              icon: const Icon(Icons.more_vert_rounded, color: _courtGreen),
+              onSelected: (value) {
+                if (value == 'signout') {
+                  onSignOut();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem<String>(
+                  enabled: false,
+                  child: Text(
+                    email.isEmpty ? fullName : email,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: 'signout',
+                  child: Text('Sign out'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScreenTitle extends StatelessWidget {
+  const _ScreenTitle({
+    required this.title,
+    this.subtitle,
+    this.onBack,
+    this.trailing,
+  });
+
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onBack;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (onBack != null) ...[
+            IconButton(
+              onPressed: onBack,
+              tooltip: 'Back',
+              icon: const Icon(Icons.arrow_back_rounded),
+              color: _ink,
+            ),
+            const SizedBox(width: 4),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Plaqora',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: _ink,
                     fontWeight: FontWeight.w900,
+                    height: 1.04,
+                    letterSpacing: 0,
                   ),
                 ),
-                Text(
-                  email.isEmpty ? fullName : email,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _muted, fontSize: 13),
-                ),
+                if (subtitle != null && subtitle!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      color: _muted,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          IconButton.filledTonal(
-            onPressed: onSignOut,
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout_rounded),
+          if (trailing != null) ...[const SizedBox(width: 10), trailing!],
+        ],
+      ),
+    );
+  }
+}
+
+class _SignalChip extends StatelessWidget {
+  const _SignalChip({
+    required this.icon,
+    required this.label,
+    this.dark = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = dark ? Colors.white : _ink;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: dark
+            ? Colors.white.withValues(alpha: 0.1)
+            : _freshGreen.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withValues(alpha: 0.12)
+              : _freshGreen.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: dark ? _freshGreen : _courtGreen, size: 15),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HomeMetric extends StatelessWidget {
+  const _HomeMetric({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: _freshGreen,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.72),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapStripe extends StatelessWidget {
+  const _MapStripe();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var index = 0; index < 6; index++) ...[
+          Container(
+            width: 4,
+            height: index.isEven ? 18 : 10,
+            decoration: BoxDecoration(
+              color: index == 1
+                  ? _freshGreen
+                  : Colors.white.withValues(alpha: 0.26),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          if (index != 5) const SizedBox(height: 5),
+        ],
+      ],
+    );
+  }
+}
+
+class _CourtSurfaceIcon extends StatelessWidget {
+  const _CourtSurfaceIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        color: _courtGreen,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, color: _freshGreen, size: 23),
+    );
+  }
+}
+
+class _ActionButtonRow extends StatelessWidget {
+  const _ActionButtonRow({
+    required this.primaryLabel,
+    required this.primaryIcon,
+    required this.onPrimary,
+    this.secondaryLabel,
+    this.secondaryIcon,
+    this.onSecondary,
+  });
+
+  final String primaryLabel;
+  final IconData primaryIcon;
+  final VoidCallback onPrimary;
+  final String? secondaryLabel;
+  final IconData? secondaryIcon;
+  final VoidCallback? onSecondary;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = FilledButton.icon(
+      onPressed: onPrimary,
+      icon: Icon(primaryIcon, size: 18),
+      label: Text(primaryLabel),
+      style: _primaryButtonStyle(),
+    );
+
+    if (secondaryLabel == null || onSecondary == null) {
+      return SizedBox(width: double.infinity, child: primary);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 360) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              primary,
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: onSecondary,
+                icon: Icon(secondaryIcon ?? Icons.info_outline_rounded),
+                label: Text(secondaryLabel!),
+                style: _secondaryButtonStyle(),
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: primary),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: onSecondary,
+              icon: Icon(secondaryIcon ?? Icons.info_outline_rounded),
+              label: Text(secondaryLabel!),
+              style: _secondaryButtonStyle(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MatchFlowStepper extends StatelessWidget {
+  const _MatchFlowStepper({
+    required this.selectedCourt,
+    required this.activeSession,
+    required this.hasMatch,
+    required this.isWaitingVerification,
+  });
+
+  final CourtSummary? selectedCourt;
+  final EventSummary? activeSession;
+  final bool hasMatch;
+  final bool isWaitingVerification;
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = <({IconData icon, String label, bool active})>[
+      (
+        icon: Icons.location_on_rounded,
+        label: 'Court',
+        active: selectedCourt != null,
+      ),
+      (
+        icon: Icons.how_to_reg_rounded,
+        label: 'Check in',
+        active: activeSession != null,
+      ),
+      (icon: Icons.groups_rounded, label: 'Match', active: hasMatch),
+      (
+        icon: Icons.verified_rounded,
+        label: 'Verify',
+        active: isWaitingVerification,
+      ),
+    ];
+
+    return Row(
+      children: [
+        for (var index = 0; index < steps.length; index++) ...[
+          Expanded(
+            child: _FlowStep(
+              icon: steps[index].icon,
+              label: steps[index].label,
+              active: steps[index].active,
+            ),
+          ),
+          if (index != steps.length - 1)
+            Container(
+              width: 16,
+              height: 2,
+              color: steps[index].active ? _freshGreen : _line,
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _FlowStep extends StatelessWidget {
+  const _FlowStep({
+    required this.icon,
+    required this.label,
+    required this.active,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: active ? _freshGreen : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: active ? _freshGreen : _line),
+          ),
+          child: Icon(icon, color: active ? _ink : _muted, size: 18),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: active ? _ink : _muted,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -688,57 +1087,11 @@ class _PageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
-      color: _courtGreen,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (onBack != null) ...[
-                IconButton.filledTonal(
-                  onPressed: onBack,
-                  tooltip: 'Back',
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-                const SizedBox(width: 10),
-              ],
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.16),
-                  ),
-                ),
-                child: Icon(icon, color: Colors.white),
-              ),
-              const Spacer(),
-              ?trailing,
-            ],
-          ),
-          const SizedBox(height: 18),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              height: 1.08,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            detail,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.82),
-              fontSize: 15,
-              height: 1.45,
-            ),
-          ),
-        ],
-      ),
+    return _ScreenTitle(
+      title: title,
+      subtitle: detail,
+      onBack: onBack,
+      trailing: trailing ?? Icon(icon, color: _courtGreen, size: 24),
     );
   }
 }
@@ -773,15 +1126,7 @@ class _StatusActionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: _courtGreen,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: Colors.white, size: 22),
-              ),
+              _CourtSurfaceIcon(icon: icon),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -812,13 +1157,10 @@ class _StatusActionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onPressed,
-              style: _primaryButtonStyle(),
-              child: Text(actionLabel),
-            ),
+          _ActionButtonRow(
+            primaryLabel: actionLabel,
+            primaryIcon: Icons.arrow_forward_rounded,
+            onPrimary: onPressed,
           ),
         ],
       ),
@@ -836,41 +1178,63 @@ class _HeroPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Panel(
       color: _courtGreen,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(99),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-            ),
-            child: const Text(
-              'Player hub',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              height: 1.08,
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: const [
+                _SignalChip(
+                  icon: Icons.sports_tennis_rounded,
+                  label: 'Doubles',
+                  dark: true,
+                ),
+                _MapStripe(),
+              ],
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            detail,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.82),
-              fontSize: 15,
-              height: 1.45,
+          Padding(
+            padding: const EdgeInsets.only(right: 88),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SignalChip(
+                  icon: Icons.bolt_rounded,
+                  label: 'Player hub',
+                  dark: true,
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    height: 1.04,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  detail,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.84),
+                    fontSize: 15,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Row(
+                  children: [
+                    _HomeMetric(value: '04', label: 'players create a match'),
+                    SizedBox(width: 10),
+                    _HomeMetric(value: '01', label: 'live queue per session'),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -883,11 +1247,13 @@ class _CourtDiscoveryPanel extends StatelessWidget {
   const _CourtDiscoveryPanel({
     required this.courtsFuture,
     required this.onSelectCourt,
+    required this.onOpenDetails,
     this.maxItems = 3,
   });
 
   final Future<List<CourtSummary>> courtsFuture;
   final Future<void> Function(CourtSummary) onSelectCourt;
+  final void Function(CourtSummary) onOpenDetails;
   final int maxItems;
 
   @override
@@ -896,9 +1262,15 @@ class _CourtDiscoveryPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionTitle(
-            icon: Icons.location_on_rounded,
-            title: 'Nearby courts',
+          Row(
+            children: const [
+              _SectionTitle(
+                icon: Icons.location_on_rounded,
+                title: 'Nearby courts',
+              ),
+              Spacer(),
+              _SignalChip(icon: Icons.map_rounded, label: 'Live list'),
+            ],
           ),
           const SizedBox(height: 6),
           const Text(
@@ -941,6 +1313,7 @@ class _CourtDiscoveryPanel extends StatelessWidget {
                     _CourtTile(
                       court: court,
                       onSelect: () => onSelectCourt(court),
+                      onOpenDetails: () => onOpenDetails(court),
                     ),
                     if (court != visibleCourts.last) const SizedBox(height: 10),
                   ],
@@ -955,64 +1328,98 @@ class _CourtDiscoveryPanel extends StatelessWidget {
 }
 
 class _CourtTile extends StatelessWidget {
-  const _CourtTile({required this.court, required this.onSelect});
+  const _CourtTile({
+    required this.court,
+    required this.onSelect,
+    required this.onOpenDetails,
+  });
 
   final CourtSummary court;
   final VoidCallback onSelect;
+  final VoidCallback onOpenDetails;
 
   @override
   Widget build(BuildContext context) {
     final address = court.address?.trim();
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _chalk,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _line),
+        boxShadow: [
+          BoxShadow(
+            color: _ink.withValues(alpha: 0.025),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: _courtGreen,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.sports_tennis_rounded, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  court.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
+          Row(
+            children: [
+              const _CourtSurfaceIcon(icon: Icons.sports_tennis_rounded),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      court.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      address == null || address.isEmpty
+                          ? 'Community court'
+                          : address,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  address == null || address.isEmpty
-                      ? 'Community court'
-                      : address,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _muted, fontSize: 12.5),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: onOpenDetails,
+                tooltip: 'Court details',
+                icon: const Icon(Icons.info_outline_rounded),
+                color: _courtGreen,
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          IconButton.filledTonal(
-            onPressed: onSelect,
-            tooltip: 'Select court',
-            icon: const Icon(Icons.check_circle_rounded),
+          const SizedBox(height: 12),
+          Row(
+            children: const [
+              _SignalChip(
+                icon: Icons.event_available_rounded,
+                label: 'Sessions',
+              ),
+              SizedBox(width: 8),
+              _SignalChip(icon: Icons.groups_rounded, label: 'Queue'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _ActionButtonRow(
+            primaryLabel: 'Court details',
+            primaryIcon: Icons.info_outline_rounded,
+            onPrimary: onOpenDetails,
+            secondaryLabel: 'Sessions',
+            secondaryIcon: Icons.event_available_rounded,
+            onSecondary: onSelect,
           ),
         ],
       ),
@@ -1045,9 +1452,30 @@ class _SessionDetailsCard extends StatelessWidget {
         children: [
           _SessionBanner(event: event),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _SignalChip(
+                      icon: Icons.sports_tennis_rounded,
+                      label: _eventTypeLabel(event.eventType),
+                    ),
+                    _SignalChip(
+                      icon: Icons.how_to_reg_rounded,
+                      label: _titleCase(event.status),
+                    ),
+                    if (event.capacity != null)
+                      _SignalChip(
+                        icon: Icons.groups_rounded,
+                        label: '${event.capacity} players',
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 _SessionMetaRow(
                   icon: Icons.schedule_rounded,
                   text: _formatTimeRange(event.startAt, event.endAt),
@@ -1057,8 +1485,8 @@ class _SessionDetailsCard extends StatelessWidget {
                   text: court.name,
                 ),
                 const _SessionMetaRow(
-                  icon: Icons.payments_rounded,
-                  text: 'Payment verified before check-in',
+                  icon: Icons.how_to_reg_rounded,
+                  text: 'Check in to enter the live queue',
                 ),
                 _SessionMetaRow(
                   icon: Icons.sports_tennis_rounded,
@@ -1069,22 +1497,6 @@ class _SessionDetailsCard extends StatelessWidget {
                   text: event.capacity == null
                       ? 'Open player capacity'
                       : '${event.capacity} player capacity',
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: onJoinLobby,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _freshGreen,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('Join lobby'),
-                  ),
                 ),
                 const SizedBox(height: 12),
                 Container(
@@ -1108,7 +1520,7 @@ class _SessionDetailsCard extends StatelessWidget {
                       ),
                       SizedBox(height: 6),
                       Text(
-                        'Check in at the court to enter the queue. The system will notify you when your match is ready.',
+                        'Check in when you are ready to enter the live queue. Four queued players create the next doubles match.',
                         style: TextStyle(
                           color: _muted,
                           fontSize: 12.5,
@@ -1116,6 +1528,16 @@ class _SessionDetailsCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: onJoinLobby,
+                    icon: const Icon(Icons.login_rounded, size: 18),
+                    label: const Text('Check In Now'),
+                    style: _primaryButtonStyle(),
                   ),
                 ),
               ],
@@ -1135,16 +1557,10 @@ class _SessionBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 98,
+      height: 124,
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_ink, _courtGreen],
-        ),
-      ),
+      decoration: const BoxDecoration(color: _freshGreen),
       child: Stack(
         children: [
           Positioned(
@@ -1152,7 +1568,7 @@ class _SessionBanner extends StatelessWidget {
             bottom: -34,
             child: Icon(
               Icons.sports_tennis_rounded,
-              color: Colors.white.withValues(alpha: 0.12),
+              color: _courtGreen.withValues(alpha: 0.12),
               size: 124,
             ),
           ),
@@ -1165,26 +1581,19 @@ class _SessionBanner extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
+                  color: _courtGreen,
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
                   height: 1.05,
                 ),
               ),
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _freshGreen,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  event.status.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w900,
-                  ),
+              Text(
+                _formatTimeRange(event.startAt, event.endAt),
+                style: const TextStyle(
+                  color: _courtGreen,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -1199,155 +1608,377 @@ class _MySessionCard extends StatelessWidget {
   const _MySessionCard({
     required this.court,
     required this.session,
-    required this.registration,
-    required this.prototypeMatch,
+    required this.status,
+    required this.onShowUpcomingMatch,
   });
 
   final CourtSummary court;
   final EventSummary session;
-  final EventRegistrationSummary? registration;
-  final _PrototypeMatch prototypeMatch;
+  final PlayerEventStatusSummary? status;
+  final VoidCallback? onShowUpcomingMatch;
 
   @override
   Widget build(BuildContext context) {
-    final status = registration?.status.replaceAll('_', ' ') ?? 'checked in';
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(
-            icon: Icons.fact_check_rounded,
-            title: 'My session',
+    final queuePosition = status?.queueEntry?.queuePosition;
+    final match = status?.match;
+    final positionLabel = queuePosition == null ? '-' : '#$queuePosition';
+    final statusLabel = match == null ? 'In Queue' : 'Match Ready';
+    final assignmentTitle = match == null
+        ? 'Waiting for court'
+        : 'Court ${match.matchNumber}';
+    final assignmentDetail = match == null
+        ? court.name
+        : '${court.name} - tap to view matchup';
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+          decoration: BoxDecoration(
+            color: _freshGreen,
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F6FF),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFD8E5FF)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  session.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatTimeRange(session.startAt, session.endAt),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _muted, fontSize: 12.5),
-                ),
-                const SizedBox(height: 5),
-                Text.rich(
-                  TextSpan(
-                    text: 'Status: ',
-                    style: const TextStyle(color: _muted, fontSize: 12.5),
-                    children: [
-                      TextSpan(
-                        text: _titleCase(status),
-                        style: const TextStyle(
-                          color: _freshGreen,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _SessionMetaRow(
-                  icon: Icons.confirmation_number_rounded,
-                  text:
-                      'Match ${prototypeMatch.matchNumber} - Queue position ${prototypeMatch.queuePosition}',
-                ),
-                _SessionMetaRow(
-                  icon: Icons.timer_rounded,
-                  text: 'Estimated wait ${prototypeMatch.estimatedWait}',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Row(
+          child: Row(
             children: [
               Expanded(
-                child: _SessionStep(
-                  icon: Icons.person_add_alt_1_rounded,
-                  label: 'Joined',
-                  active: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.circle, color: _courtGreen, size: 8),
+                        SizedBox(width: 8),
+                        Text(
+                          'Current status',
+                          style: TextStyle(
+                            color: _courtGreen,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      statusLabel,
+                      style: const TextStyle(
+                        color: _courtGreen,
+                        fontSize: 46,
+                        fontWeight: FontWeight.w900,
+                        height: 0.92,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Expanded(
-                child: _SessionStep(
-                  icon: Icons.payments_rounded,
-                  label: 'Paid',
-                  active: false,
+              Container(
+                width: 92,
+                height: 92,
+                decoration: const BoxDecoration(
+                  color: _chalk,
+                  shape: BoxShape.circle,
                 ),
-              ),
-              Expanded(
-                child: _SessionStep(
-                  icon: Icons.check_rounded,
-                  label: 'Checked in',
-                  active: true,
-                ),
-              ),
-              Expanded(
-                child: _SessionStep(
-                  icon: Icons.groups_rounded,
-                  label: 'Playing',
-                  active: false,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'POS',
+                      style: TextStyle(
+                        color: _courtGreen,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      positionLabel,
+                      style: const TextStyle(
+                        color: _courtGreen,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F6FF),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFD8E5FF)),
-            ),
+        ),
+        const SizedBox(height: 16),
+        _AssignmentCard(title: assignmentTitle, detail: assignmentDetail),
+        const SizedBox(height: 16),
+        _NextMatchupCard(match: match, onTap: onShowUpcomingMatch),
+        const SizedBox(height: 16),
+        const _SessionTimeline(activeIndex: 1),
+      ],
+    );
+  }
+}
+
+class _AssignmentCard extends StatelessWidget {
+  const _AssignmentCard({required this.title, required this.detail});
+
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Row(
+        children: [
+          const _CourtSurfaceIcon(icon: Icons.map_rounded),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.notifications_active_rounded,
-                  color: _freshGreen,
-                  size: 34,
-                ),
-                const SizedBox(height: 10),
                 const Text(
-                  "You're in the queue",
-                  textAlign: TextAlign.center,
+                  'Upcoming assignment',
                   style: TextStyle(
+                    color: _muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: const TextStyle(
                     color: _ink,
-                    fontSize: 16,
+                    fontSize: 22,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 2),
                 Text(
-                  'You will be notified when ${prototypeMatch.matchNumber} is ready at ${court.name}.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: _muted,
-                    fontSize: 12.5,
-                    height: 1.35,
-                  ),
+                  detail,
+                  style: const TextStyle(color: _muted, fontSize: 13.5),
                 ),
               ],
             ),
+          ),
+          const _SignalChip(icon: Icons.timer_rounded, label: 'Est. 15m'),
+        ],
+      ),
+    );
+  }
+}
+
+class _NextMatchupCard extends StatelessWidget {
+  const _NextMatchupCard({required this.match, required this.onTap});
+
+  final PlayMatchSummary? match;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = match != null && onTap != null;
+    return Material(
+      color: const Color(0xFFFFD0E8),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            children: [
+              Row(
+                children: const [
+                  Text(
+                    'Next matchup',
+                    style: TextStyle(
+                      color: Color(0xFF80546E),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Spacer(),
+                  _SignalChip(icon: Icons.groups_rounded, label: 'Doubles'),
+                ],
+              ),
+              const Divider(height: 26, color: Color(0xFFEAB4CF)),
+              if (match == null)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 18),
+                  child: Text(
+                    'Waiting for player...',
+                    style: TextStyle(
+                      color: Color(0xFF80546E),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MiniTeam(
+                        label: 'You & Partner',
+                        players: match!.teamOne,
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 10),
+                      child: CircleAvatar(
+                        radius: 19,
+                        backgroundColor: _chalk,
+                        child: Text(
+                          'VS',
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: _MiniTeam(
+                        label: 'Opponents',
+                        players: match!.teamTwo,
+                        alignEnd: true,
+                      ),
+                    ),
+                  ],
+                ),
+              if (enabled) ...[
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: onTap,
+                  icon: const Icon(Icons.sports_score_rounded, size: 18),
+                  label: const Text('View Matchup'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _chalk,
+                    foregroundColor: _ink,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniTeam extends StatelessWidget {
+  const _MiniTeam({
+    required this.label,
+    required this.players,
+    this.alignEnd = false,
+  });
+
+  final String label;
+  final List<MatchParticipantSummary> players;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final names = players.isEmpty
+        ? 'Waiting'
+        : players.map((player) => player.displayName).join(' / ');
+    return Column(
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: alignEnd
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
+          children: [
+            for (final player in players.take(2))
+              Padding(
+                padding: const EdgeInsets.only(right: 3),
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: _courtGreen,
+                  child: Text(
+                    player.displayName.characters.first,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF80546E),
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          names,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+          style: const TextStyle(
+            color: Color(0xFF80546E),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            height: 1.25,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SessionTimeline extends StatelessWidget {
+  const _SessionTimeline({required this.activeIndex});
+
+  final int activeIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      (Icons.check_rounded, 'Checked In'),
+      (Icons.groups_rounded, 'In Queue'),
+      (Icons.sports_score_rounded, 'Assigned'),
+      (Icons.emoji_events_rounded, 'Result'),
+    ];
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Session timeline',
+            style: TextStyle(
+              color: _ink,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                Expanded(
+                  child: _SessionStep(
+                    icon: items[i].$1,
+                    label: items[i].$2,
+                    active: i <= activeIndex,
+                  ),
+                ),
+                if (i != items.length - 1)
+                  Container(width: 16, height: 2, color: _line),
+              ],
+            ],
           ),
         ],
       ),
@@ -1379,7 +2010,7 @@ class _SessionStep extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: active ? color : _line),
           ),
-          child: Icon(icon, color: active ? Colors.white : color, size: 18),
+          child: Icon(icon, color: active ? _ink : color, size: 18),
         ),
         const SizedBox(height: 6),
         Text(
@@ -1401,73 +2032,323 @@ class _SessionStep extends StatelessWidget {
 class _UpcomingMatchCard extends StatelessWidget {
   const _UpcomingMatchCard({
     required this.court,
-    required this.prototypeMatch,
+    required this.match,
     required this.onGoToCourt,
   });
 
   final CourtSummary court;
-  final _PrototypeMatch prototypeMatch;
-  final VoidCallback onGoToCourt;
+  final PlayMatchSummary match;
+  final Future<void> Function() onGoToCourt;
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(
-            icon: Icons.sports_score_rounded,
-            title: 'Upcoming match',
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+          decoration: BoxDecoration(
+            color: _freshGreen,
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Your match is ready',
-            style: TextStyle(
-              color: _ink,
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            '${court.name} - Match ${prototypeMatch.matchNumber}',
-            style: const TextStyle(color: _muted, fontSize: 12.5),
-          ),
-          const SizedBox(height: 16),
-          _TeamCard(
-            name: prototypeMatch.homeTeam.name,
-            color: prototypeMatch.homeTeam.color,
-            tint: prototypeMatch.homeTeam.tint,
-            border: prototypeMatch.homeTeam.border,
-            players: prototypeMatch.homeTeam.players,
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Center(
-              child: Text(
-                'VS',
+          child: Column(
+            children: [
+              const Text(
+                'Assigned court',
                 style: TextStyle(
-                  color: _ink,
-                  fontSize: 12,
+                  color: _courtGreen,
+                  fontSize: 13,
                   fontWeight: FontWeight.w900,
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                court.name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _courtGreen,
+                  fontSize: 42,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const _SignalChip(
+                icon: Icons.timer_rounded,
+                label: 'Starts soon',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _MatchTeamRow(
+                title: 'Team Alpha',
+                seed: 'Seed #1',
+                players: match.teamOne,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: _chalk,
+                    child: Text(
+                      'VS',
+                      style: TextStyle(
+                        color: _courtGreen,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              _MatchTeamRow(
+                title: 'Team Bravo',
+                seed: 'Seed #4',
+                players: match.teamTwo,
+                alignEnd: true,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: onGoToCourt,
+            style: _primaryButtonStyle(),
+            child: const Text('Start Match'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MatchTeamRow extends StatelessWidget {
+  const _MatchTeamRow({
+    required this.title,
+    required this.seed,
+    required this.players,
+    this.alignEnd = false,
+  });
+
+  final String title;
+  final String seed;
+  final List<MatchParticipantSummary> players;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final names = players.isEmpty
+        ? 'Waiting'
+        : players.map((player) => player.displayName).join(' / ');
+    return Column(
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            if (!alignEnd)
+              Text(
+                title,
+                style: const TextStyle(
+                  color: _muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            const Spacer(),
+            _SignalChip(icon: Icons.emoji_events_rounded, label: seed),
+            if (alignEnd) ...[
+              const Spacer(),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: _muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _chalk,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            textDirection: alignEnd ? TextDirection.rtl : TextDirection.ltr,
+            children: [
+              for (final player in players.take(2))
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: _courtGreen,
+                    child: Text(
+                      player.displayName.characters.first,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: alignEnd
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      names,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'DUPR avg pending',
+                      style: TextStyle(color: _muted, fontSize: 12.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LiveMatchPanel extends StatelessWidget {
+  const _LiveMatchPanel({
+    required this.court,
+    required this.match,
+    required this.onFinishMatch,
+    required this.onLeaveCourt,
+  });
+
+  final CourtSummary court;
+  final PlayMatchSummary match;
+  final VoidCallback onFinishMatch;
+  final Future<void> Function() onLeaveCourt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: _courtGreen,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+            decoration: BoxDecoration(
+              color: _freshGreen,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              court.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _courtGreen,
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-          _TeamCard(
-            name: prototypeMatch.awayTeam.name,
-            color: prototypeMatch.awayTeam.color,
-            tint: prototypeMatch.awayTeam.tint,
-            border: prototypeMatch.awayTeam.border,
-            players: prototypeMatch.awayTeam.players,
+          const SizedBox(height: 14),
+          const _SignalChip(
+            icon: Icons.fiber_manual_record_rounded,
+            label: 'Recording Live',
+            dark: true,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 22),
+          _LiveTeamBlock(label: 'Team Alpha', players: match.teamOne),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 22),
+            child: _SignalChip(
+              icon: Icons.play_circle_fill_rounded,
+              label: 'Match in progress',
+              dark: true,
+            ),
+          ),
+          _LiveTeamBlock(label: 'Team Bravo', players: match.teamTwo),
+          const SizedBox(height: 22),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            ),
+            child: Row(
+              children: const [
+                Icon(Icons.verified_user_rounded, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Staff verified\nScores are tracked by tournament staff.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                      height: 1.35,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: onGoToCourt,
+            child: FilledButton.icon(
+              onPressed: onFinishMatch,
+              icon: const Icon(Icons.sports_score_rounded, size: 18),
+              label: const Text('Finish Match'),
               style: _primaryButtonStyle(),
-              child: const Text('Go to court'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onLeaveCourt,
+              icon: const Icon(Icons.logout_rounded, size: 18),
+              label: const Text('Leave session'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.36)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
           ),
         ],
@@ -1476,18 +2357,318 @@ class _UpcomingMatchCard extends StatelessWidget {
   }
 }
 
-class _MatchResultCard extends StatelessWidget {
-  const _MatchResultCard({
+class _LiveTeamBlock extends StatelessWidget {
+  const _LiveTeamBlock({required this.label, required this.players});
+
+  final String label;
+  final List<MatchParticipantSummary> players;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _freshGreen.withValues(alpha: 0.32)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: _chalk,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (final player in players.take(2))
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: CircleAvatar(
+                    radius: 24,
+                    backgroundColor: _freshGreen,
+                    child: Text(
+                      player.displayName.characters.first,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VerificationPanel extends StatelessWidget {
+  const _VerificationPanel({
     required this.court,
-    required this.prototypeMatch,
-    required this.matchFinished,
-    required this.onMatchFinished,
+    required this.match,
+    required this.scoreSubmission,
+    required this.onRefreshStatus,
   });
 
   final CourtSummary court;
-  final _PrototypeMatch prototypeMatch;
-  final bool matchFinished;
-  final VoidCallback onMatchFinished;
+  final PlayMatchSummary match;
+  final PlayerScoreSubmissionSummary? scoreSubmission;
+  final Future<void> Function() onRefreshStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final verified = scoreSubmission?.status == 'verified';
+    if (verified) {
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _freshGreen,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SignalChip(
+                  icon: Icons.emoji_events_rounded,
+                  label: 'Winners',
+                ),
+                const SizedBox(height: 14),
+                for (final player in match.teamOne) ...[
+                  _WinnerLine(player: player),
+                  const SizedBox(height: 10),
+                ],
+                const Divider(height: 24, color: _clay),
+                Row(
+                  children: [
+                    const Text(
+                      'Score',
+                      style: TextStyle(
+                        color: _courtGreen,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${scoreSubmission?.teamOneScore ?? 11}-${scoreSubmission?.teamTwoScore ?? 9}',
+                      style: const TextStyle(
+                        color: _courtGreen,
+                        fontSize: 42,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _Panel(
+            child: Row(
+              children: const [
+                CircleAvatar(
+                  backgroundColor: _freshGreen,
+                  child: Icon(Icons.trending_up_rounded, color: _courtGreen),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Rating impact\nCalculated after rating jobs are enabled.',
+                    style: TextStyle(
+                      color: _ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+                Text(
+                  '+15',
+                  style: TextStyle(
+                    color: _courtGreen,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onRefreshStatus,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: const Text('Return to Queue'),
+              style: _primaryButtonStyle(),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        Container(
+          width: 132,
+          height: 132,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: _line, width: 8),
+          ),
+          child: const Icon(
+            Icons.more_horiz_rounded,
+            color: Color(0xFF80546E),
+            size: 42,
+          ),
+        ),
+        const SizedBox(height: 24),
+        _Panel(
+          child: Column(
+            children: [
+              _SessionMetaRow(
+                icon: Icons.location_on_rounded,
+                text: court.name,
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MiniTeam(label: 'Team A', players: match.teamOne),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      'VS',
+                      style: TextStyle(
+                        color: _line,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _MiniTeam(
+                      label: 'Team B',
+                      players: match.teamTwo,
+                      alignEnd: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const _SignalChip(
+                icon: Icons.circle,
+                label: 'Waiting for Staff Confirmation',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onRefreshStatus,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Refresh status'),
+            style: _primaryButtonStyle(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WinnerLine extends StatelessWidget {
+  const _WinnerLine({required this.player});
+
+  final MatchParticipantSummary player;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: _courtGreen,
+          child: Text(
+            player.displayName.characters.first,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            player.displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _courtGreen,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MatchResultCard extends StatefulWidget {
+  const _MatchResultCard({
+    required this.court,
+    required this.match,
+    required this.onSubmitScore,
+  });
+
+  final CourtSummary court;
+  final PlayMatchSummary match;
+  final Future<void> Function(int teamOneScore, int teamTwoScore) onSubmitScore;
+
+  @override
+  State<_MatchResultCard> createState() => _MatchResultCardState();
+}
+
+class _MatchResultCardState extends State<_MatchResultCard> {
+  final TextEditingController _teamOneController = TextEditingController(
+    text: '11',
+  );
+  final TextEditingController _teamTwoController = TextEditingController(
+    text: '7',
+  );
+
+  @override
+  void dispose() {
+    _teamOneController.dispose();
+    _teamTwoController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1497,12 +2678,12 @@ class _MatchResultCard extends StatelessWidget {
         children: [
           const _SectionTitle(
             icon: Icons.task_alt_rounded,
-            title: 'Match result',
+            title: 'Final score',
           ),
           const SizedBox(height: 14),
           Text(
-            'Match ${prototypeMatch.matchNumber}',
-            style: TextStyle(
+            'Match ${widget.match.matchLabel}',
+            style: const TextStyle(
               color: _ink,
               fontSize: 16,
               fontWeight: FontWeight.w900,
@@ -1510,14 +2691,14 @@ class _MatchResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${court.name} - ${prototypeMatch.scoreSummary}',
+            '${widget.court.name} - submit for staff verification',
             style: const TextStyle(color: _muted, fontSize: 12.5),
           ),
           const Divider(height: 28, color: _line),
-          Center(
+          const Center(
             child: Text(
-              prototypeMatch.homeTeam.name,
-              style: const TextStyle(
+              'Team 1',
+              style: TextStyle(
                 color: _ink,
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
@@ -1525,7 +2706,7 @@ class _MatchResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Center(child: _ScoreBox(score: prototypeMatch.homeScore)),
+          Center(child: _ScoreInput(controller: _teamOneController)),
           const SizedBox(height: 12),
           const Center(
             child: Text(
@@ -1538,10 +2719,10 @@ class _MatchResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Center(
+          const Center(
             child: Text(
-              prototypeMatch.awayTeam.name,
-              style: const TextStyle(
+              'Team 2',
+              style: TextStyle(
                 color: _ink,
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
@@ -1549,149 +2730,51 @@ class _MatchResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Center(child: _ScoreBox(score: prototypeMatch.awayScore)),
+          Center(child: _ScoreInput(controller: _teamTwoController)),
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: matchFinished ? null : onMatchFinished,
+              onPressed: () {
+                final teamOneScore = int.tryParse(
+                  _teamOneController.text.trim(),
+                );
+                final teamTwoScore = int.tryParse(
+                  _teamTwoController.text.trim(),
+                );
+                if (teamOneScore == null || teamTwoScore == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Enter both scores as numbers.'),
+                    ),
+                  );
+                  return;
+                }
+                widget.onSubmitScore(teamOneScore, teamTwoScore);
+              },
               style: FilledButton.styleFrom(
                 backgroundColor: _freshGreen,
-                foregroundColor: Colors.white,
+                foregroundColor: _ink,
                 disabledBackgroundColor: _freshGreen.withValues(alpha: 0.5),
-                disabledForegroundColor: Colors.white,
+                disabledForegroundColor: _ink.withValues(alpha: 0.48),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('Match finished'),
+              child: const Text('Submit Score'),
             ),
           ),
-          if (matchFinished) ...[
-            const SizedBox(height: 10),
-            Center(
-              child: Text(
-                '${prototypeMatch.verifierName} is confirming the result',
-                style: const TextStyle(
-                  color: _muted,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 }
 
-class _TeamCard extends StatelessWidget {
-  const _TeamCard({
-    required this.name,
-    required this.color,
-    required this.tint,
-    required this.border,
-    required this.players,
-  });
+class _ScoreInput extends StatelessWidget {
+  const _ScoreInput({required this.controller});
 
-  final String name;
-  final Color color;
-  final Color tint;
-  final Color border;
-  final List<_MatchPlayer> players;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: tint,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            name,
-            style: TextStyle(
-              color: color,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 10),
-          for (final player in players) ...[
-            _PlayerLine(player: player),
-            if (player != players.last) const SizedBox(height: 10),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PlayerLine extends StatelessWidget {
-  const _PlayerLine({required this.player});
-
-  final _MatchPlayer player;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 14,
-          backgroundColor: _courtGreen,
-          child: Text(
-            player.name.characters.first,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            player.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _ink,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        Text(
-          player.rating,
-          style: const TextStyle(
-            color: _ink,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MatchPlayer {
-  const _MatchPlayer({required this.name, required this.rating});
-
-  final String name;
-  final String rating;
-}
-
-class _ScoreBox extends StatelessWidget {
-  const _ScoreBox({required this.score});
-
-  final String score;
+  final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -1711,11 +2794,14 @@ class _ScoreBox extends StatelessWidget {
           ),
         ],
       ),
-      child: Text(
-        score,
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        decoration: const InputDecoration(border: InputBorder.none),
         style: const TextStyle(
           color: _ink,
-          fontSize: 30,
+          fontSize: 28,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -1782,9 +2868,20 @@ String _titleCase(String value) {
 ButtonStyle _primaryButtonStyle() {
   return FilledButton.styleFrom(
     backgroundColor: _freshGreen,
-    foregroundColor: Colors.white,
+    foregroundColor: _ink,
     padding: const EdgeInsets.symmetric(vertical: 14),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    textStyle: const TextStyle(fontWeight: FontWeight.w900),
+  );
+}
+
+ButtonStyle _secondaryButtonStyle() {
+  return OutlinedButton.styleFrom(
+    foregroundColor: _courtGreen,
+    side: const BorderSide(color: _line),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    textStyle: const TextStyle(fontWeight: FontWeight.w900),
   );
 }
 
@@ -1897,262 +2994,6 @@ class _InlineLoadingState extends StatelessWidget {
   }
 }
 
-class _ReadinessCard extends StatelessWidget {
-  const _ReadinessCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _SectionTitle(
-            icon: Icons.check_circle_rounded,
-            title: 'Build readiness',
-          ),
-          SizedBox(height: 14),
-          _ReadinessRow(text: 'Supabase Auth connected'),
-          _ReadinessRow(text: 'FastAPI profile sync live'),
-          _ReadinessRow(text: 'Events, matches, ratings, rankings routed'),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReadinessRow extends StatelessWidget {
-  const _ReadinessRow({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          const Icon(Icons.done_rounded, color: _freshGreen, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(color: _muted, fontSize: 13.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DeveloperChecks extends StatelessWidget {
-  const _DeveloperChecks({
-    required this.isLoading,
-    required this.lastResult,
-    required this.fullName,
-    required this.user,
-    required this.runRequest,
-  });
-
-  final bool isLoading;
-  final String lastResult;
-  final String fullName;
-  final User? user;
-  final Future<void> Function(Future<dynamic> Function(), String) runRequest;
-
-  @override
-  Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(
-            icon: Icons.api_rounded,
-            title: 'Live API checks',
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _CheckButton(
-                label: 'Auth',
-                icon: Icons.verified_user_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.get(ApiEndpoints.authMe),
-                  'GET /auth/me',
-                ),
-              ),
-              _CheckButton(
-                label: 'Sync profile',
-                icon: Icons.sync_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.post(
-                    ApiEndpoints.userSync,
-                    data: {
-                      'full_name': fullName,
-                      'avatar_url': user?.userMetadata?['avatar_url'],
-                    },
-                  ),
-                  'POST /users/sync',
-                ),
-              ),
-              _CheckButton(
-                label: 'Update name',
-                icon: Icons.edit_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.patch(
-                    ApiEndpoints.usersMe,
-                    data: {'full_name': '$fullName Updated'},
-                  ),
-                  'PATCH /users/me',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _CheckButton(
-                label: 'Courts',
-                icon: Icons.location_on_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.get(ApiEndpoints.courts),
-                  'GET /courts',
-                ),
-              ),
-              _CheckButton(
-                label: 'My courts',
-                icon: Icons.groups_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.get(
-                    '${ApiEndpoints.courtMemberships}/me',
-                  ),
-                  'GET /court-memberships/me',
-                ),
-              ),
-              _CheckButton(
-                label: 'Events',
-                icon: Icons.event_available_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.get(ApiEndpoints.events),
-                  'GET /events',
-                ),
-              ),
-              _CheckButton(
-                label: 'My events',
-                icon: Icons.event_seat_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.get(
-                    '${ApiEndpoints.eventRegistrations}/me',
-                  ),
-                  'GET /event-registrations/me',
-                ),
-              ),
-              _CheckButton(
-                label: 'Matches',
-                icon: Icons.sports_score_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.get(ApiEndpoints.matches),
-                  'GET /matches',
-                ),
-              ),
-              _CheckButton(
-                label: 'Ratings',
-                icon: Icons.speed_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.get(ApiEndpoints.ratings),
-                  'GET /ratings',
-                ),
-              ),
-              _CheckButton(
-                label: 'Rankings',
-                icon: Icons.leaderboard_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.get(ApiEndpoints.rankings),
-                  'GET /rankings',
-                ),
-              ),
-              _CheckButton(
-                label: 'Scores',
-                icon: Icons.scoreboard_rounded,
-                isLoading: isLoading,
-                onPressed: () => runRequest(
-                  () => ApiClient.instance.get(ApiEndpoints.scoreSubmissions),
-                  'GET /score-submissions',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _chalk,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _line),
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 150),
-              child: SingleChildScrollView(
-                child: Text(
-                  lastResult,
-                  style: const TextStyle(
-                    color: _muted,
-                    fontSize: 12.5,
-                    height: 1.35,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CheckButton extends StatelessWidget {
-  const _CheckButton({
-    required this.label,
-    required this.icon,
-    required this.isLoading,
-    required this.onPressed,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool isLoading;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: isLoading ? null : onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: FilledButton.styleFrom(
-        backgroundColor: _ink,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.icon, required this.title});
 
@@ -2179,7 +3020,7 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _Panel extends StatelessWidget {
-  const _Panel({required this.child, this.color = Colors.white});
+  const _Panel({required this.child, this.color = _paper});
 
   final Widget child;
   final Color color;
@@ -2192,188 +3033,18 @@ class _Panel extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(8),
-        border: color == Colors.white ? Border.all(color: _line) : null,
+        border: color == _paper ? Border.all(color: _line) : null,
+        boxShadow: color == _paper
+            ? [
+                BoxShadow(
+                  color: _ink.withValues(alpha: 0.035),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : null,
       ),
       child: child,
     );
   }
-}
-
-class _PrototypeData {
-  static List<CourtSummary> courts() {
-    return const [
-      CourtSummary(
-        id: 'court-riverview',
-        name: 'Riverview Pickleball Club',
-        slug: 'riverview-pickleball-club',
-        status: 'active',
-        address: '12 Harbor Ave, Taipei',
-        contactInfo: 'Queue master: Ana',
-      ),
-      CourtSummary(
-        id: 'court-skyline',
-        name: 'Skyline Courts',
-        slug: 'skyline-courts',
-        status: 'active',
-        address: '88 Aurora Street, Taipei',
-        contactInfo: 'Queue master: Mico',
-      ),
-      CourtSummary(
-        id: 'court-sunrise',
-        name: 'Sunrise Sports Hub',
-        slug: 'sunrise-sports-hub',
-        status: 'active',
-        address: '44 Dawn Lane, New Taipei',
-        contactInfo: 'Queue master: Joey',
-      ),
-    ];
-  }
-
-  static List<EventSummary> eventsForCourt(String courtId) {
-    switch (courtId) {
-      case 'court-riverview':
-        return _buildSessions(
-          courtId,
-          [
-            ('Thursday Competitive Play', 'competitive_play', 16, 0, 90),
-            ('Sunset Ladder Night', 'ladder_match', 16, 150, 90),
-            ('Weekend Social Warmup', 'open_play', 20, 330, 120),
-          ],
-        );
-      case 'court-skyline':
-        return _buildSessions(
-          courtId,
-          [
-            ('City League Rotation', 'competitive_play', 12, 45, 90),
-            ('Late Court Ladder', 'ladder_match', 12, 210, 90),
-            ('All Levels Open Play', 'open_play', 18, 360, 120),
-          ],
-        );
-      case 'court-sunrise':
-        return _buildSessions(
-          courtId,
-          [
-            ('Morning Open Play', 'open_play', 18, 30, 120),
-            ('Friday Mixed Doubles', 'competitive_play', 16, 180, 90),
-            ('Kings Court Ladder', 'ladder_match', 10, 300, 90),
-          ],
-        );
-      default:
-        return _buildSessions(
-          courtId,
-          [
-            ('Open Play', 'open_play', 12, 60, 120),
-          ],
-        );
-    }
-  }
-
-  static EventRegistrationSummary joinLobby(String eventId) {
-    return EventRegistrationSummary(
-      id: 'registration-$eventId',
-      eventId: eventId,
-      status: 'checked_in',
-      checkedInAt: DateTime.now().toUtc().subtract(const Duration(minutes: 6)),
-    );
-  }
-
-  static _PrototypeMatch match() {
-    return _PrototypeMatch(
-      matchNumber: '102',
-      queuePosition: '3',
-      estimatedWait: '14 min',
-      verifierName: 'Court Marshal Ana',
-      homeScore: '11',
-      awayScore: '7',
-      homeTeam: _PrototypeMatchTeam(
-        name: 'Team A',
-        color: const Color(0xFF3B82F6),
-        tint: const Color(0xFFF1F6FF),
-        border: const Color(0xFFD8E5FF),
-        players: const [
-          _MatchPlayer(name: 'Mico Santos', rating: '3.20'),
-          _MatchPlayer(name: 'John Reyes', rating: '3.15'),
-        ],
-      ),
-      awayTeam: _PrototypeMatchTeam(
-        name: 'Team B',
-        color: const Color(0xFFE43F5A),
-        tint: const Color(0xFFFFF1F4),
-        border: const Color(0xFFF9D7DF),
-        players: const [
-          _MatchPlayer(name: 'Anna Garcia', rating: '3.25'),
-          _MatchPlayer(name: 'Kyle Wong', rating: '3.10'),
-        ],
-      ),
-    );
-  }
-
-  static List<EventSummary> _buildSessions(
-    String courtId,
-    List<(String, String, int, int, int)> specs,
-  ) {
-    final baseDate = DateTime.now().toUtc();
-    return List<EventSummary>.unmodifiable(
-      specs
-          .asMap()
-          .entries
-          .map((entry) {
-            final index = entry.key;
-            final spec = entry.value;
-            final startAt = baseDate.add(Duration(hours: spec.$4));
-            final endAt = startAt.add(Duration(minutes: spec.$5));
-            return EventSummary(
-              id: '$courtId-${index + 1}',
-              courtId: courtId,
-              name: spec.$1,
-              eventType: spec.$2,
-              status: index == 0 ? 'in_progress' : 'scheduled',
-              startAt: startAt,
-              endAt: endAt,
-              capacity: spec.$3,
-            );
-          })
-          .toList(growable: false),
-    );
-  }
-}
-
-class _PrototypeMatch {
-  const _PrototypeMatch({
-    required this.matchNumber,
-    required this.queuePosition,
-    required this.estimatedWait,
-    required this.verifierName,
-    required this.homeTeam,
-    required this.awayTeam,
-    required this.homeScore,
-    required this.awayScore,
-  });
-
-  final String matchNumber;
-  final String queuePosition;
-  final String estimatedWait;
-  final String verifierName;
-  final _PrototypeMatchTeam homeTeam;
-  final _PrototypeMatchTeam awayTeam;
-  final String homeScore;
-  final String awayScore;
-
-  String get scoreSummary => '$homeScore-$awayScore';
-}
-
-class _PrototypeMatchTeam {
-  const _PrototypeMatchTeam({
-    required this.name,
-    required this.color,
-    required this.tint,
-    required this.border,
-    required this.players,
-  });
-
-  final String name;
-  final Color color;
-  final Color tint;
-  final Color border;
-  final List<_MatchPlayer> players;
 }

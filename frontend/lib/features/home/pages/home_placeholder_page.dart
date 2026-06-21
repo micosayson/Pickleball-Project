@@ -33,6 +33,9 @@ const _muted = Color(0xFF727763);
 const _chalk = Color(0xFFFCFCEB);
 const _paper = Color(0xFFFFFFF4);
 const _line = Color(0xFFE6E8C8);
+const _softOlive = Color(0xFFE9EBD4);
+const _blush = Color(0xFFFFD0E8);
+const _liveSurface = Color(0xFF3E481D);
 const _figmaDemoMatchId = 'figma-demo-match';
 
 enum _PlayPage {
@@ -150,6 +153,17 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     final user = Supabase.instance.client.auth.currentUser;
     final fullName = user?.userMetadata?['full_name'] as String? ?? 'Player';
     final email = user?.email ?? '';
+    final usesPrototypeHeader =
+        _selectedIndex == 0 &&
+        {
+          _PlayPage.sessionDetails,
+          _PlayPage.payment,
+          _PlayPage.queueLobby,
+          _PlayPage.upcomingMatch,
+          _PlayPage.activeMatch,
+          _PlayPage.matchResult,
+          _PlayPage.waitingVerification,
+        }.contains(_playPage);
 
     return Scaffold(
       extendBody: true,
@@ -218,6 +232,11 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                 child: ProfileHistoryContent(),
               ),
             };
+            final horizontalPadding = isWide
+                ? 40.0
+                : usesPrototypeHeader
+                ? 0.0
+                : 18.0;
 
             return DecoratedBox(
               decoration: const BoxDecoration(
@@ -233,50 +252,51 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                   '$_selectedIndex-$_playPage-${_selectedCourt?.id}-${_selectedSession?.id}-${_activeSession?.id}',
                 ),
                 slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        isWide ? 40 : 18,
-                        16,
-                        isWide ? 40 : 18,
-                        16,
-                      ),
-                      child: Center(
-                        child: _HomeHeader(
-                          fullName: fullName,
-                          email: email,
-                          selectedIndex: _selectedIndex,
-                          onOpenNotifications: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const NotificationsPage(),
-                                settings: const RouteSettings(
-                                  name: AppRoutes.notifications,
-                                ),
-                              ),
-                            );
-                          },
-                          onSignOut: () async {
-                            await AuthService().signOut();
-                            if (context.mounted) {
-                              Navigator.pushAndRemoveUntil(
-                                context,
+                  if (!usesPrototypeHeader)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          isWide ? 40 : 0,
+                          10,
+                          isWide ? 40 : 0,
+                          12,
+                        ),
+                        child: Center(
+                          child: _HomeHeader(
+                            fullName: fullName,
+                            email: email,
+                            selectedIndex: _selectedIndex,
+                            onOpenNotifications: () {
+                              Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) => const LoginPage(),
+                                  builder: (_) => const NotificationsPage(),
+                                  settings: const RouteSettings(
+                                    name: AppRoutes.notifications,
+                                  ),
                                 ),
-                                (route) => false,
                               );
-                            }
-                          },
+                            },
+                            onSignOut: () async {
+                              await AuthService().signOut();
+                              if (context.mounted) {
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginPage(),
+                                  ),
+                                  (route) => false,
+                                );
+                              }
+                            },
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   SliverPadding(
                     padding: EdgeInsets.fromLTRB(
-                      isWide ? 40 : 18,
+                      horizontalPadding,
                       0,
-                      isWide ? 40 : 18,
+                      horizontalPadding,
                       96,
                     ),
                     sliver: SliverToBoxAdapter(
@@ -296,59 +316,62 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
           },
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: _paper,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _line),
-            boxShadow: [
-              BoxShadow(
-                color: _ink.withValues(alpha: 0.12),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
+      bottomNavigationBar: usesPrototypeHeader
+          ? null
+          : SafeArea(
+              minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _paper,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: _line),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _ink.withValues(alpha: 0.12),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: NavigationBar(
+                    height: 70,
+                    elevation: 0,
+                    backgroundColor: _paper,
+                    indicatorColor: _freshGreen,
+                    labelBehavior:
+                        NavigationDestinationLabelBehavior.alwaysShow,
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: (index) {
+                      setState(() => _selectedIndex = index);
+                    },
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.sports_tennis_rounded),
+                        label: 'Play',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.location_on_rounded),
+                        label: 'Courts',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.sports_score_rounded),
+                        label: 'Matches',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.calendar_month_rounded),
+                        label: 'Sessions',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.person_rounded),
+                        label: 'Profile',
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: NavigationBar(
-              height: 70,
-              elevation: 0,
-              backgroundColor: _paper,
-              indicatorColor: _freshGreen,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (index) {
-                setState(() => _selectedIndex = index);
-              },
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.sports_tennis_rounded),
-                  label: 'Play',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.location_on_rounded),
-                  label: 'Courts',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.sports_score_rounded),
-                  label: 'Matches',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.calendar_month_rounded),
-                  label: 'Sessions',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.person_rounded),
-                  label: 'Profile',
-                ),
-              ],
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -763,58 +786,19 @@ class _HomeHeader extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 430),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         decoration: BoxDecoration(
-          color: _chalk,
+          color: _chalk.withValues(alpha: 0.96),
           border: Border(bottom: BorderSide(color: _line)),
         ),
         child: Row(
           children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: _freshGreen,
-                shape: BoxShape.circle,
-                border: Border.all(color: _courtGreen, width: 2),
-              ),
-              child: Center(
-                child: Text(
-                  fullName.trim().isEmpty
-                      ? 'P'
-                      : fullName.trim().characters.first.toUpperCase(),
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Semantics(
-                label: 'RallyHub $section',
-                child: const Text(
-                  'RallyHub',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _courtGreen,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-            ),
-            IconButton(
-              onPressed: onOpenNotifications,
-              tooltip: 'Notifications',
-              icon: const Icon(Icons.notifications_none_rounded),
-              color: _courtGreen,
-            ),
             PopupMenuButton<String>(
               tooltip: email.isEmpty ? fullName : email,
-              icon: const Icon(Icons.more_vert_rounded, color: _courtGreen),
+              offset: const Offset(0, 52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               onSelected: (value) {
                 if (value == 'signout') {
                   onSignOut();
@@ -834,9 +818,114 @@ class _HomeHeader extends StatelessWidget {
                   child: Text('Sign out'),
                 ),
               ],
+              child: _PlayerAvatar(label: fullName),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Semantics(
+                label: 'RallyHub $section',
+                child: const Text(
+                  'RallyHub',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _courtGreen,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            IconButton(
+              onPressed: onOpenNotifications,
+              tooltip: 'Notifications',
+              icon: const Icon(Icons.notifications_none_rounded),
+              color: _courtGreen,
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PlayerAvatar extends StatelessWidget {
+  const _PlayerAvatar({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = 23.0;
+    final initial = label.trim().isEmpty
+        ? 'P'
+        : label.trim().characters.first.toUpperCase();
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        color: _freshGreen,
+        shape: BoxShape.circle,
+        border: Border.all(color: _courtGreen, width: 2),
+      ),
+      child: Center(
+        child: Text(
+          initial,
+          style: TextStyle(
+            color: _ink,
+            fontSize: radius * 0.74,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FlowTopBar extends StatelessWidget {
+  const _FlowTopBar({
+    required this.title,
+    this.onBack,
+    this.trailingIcon = Icons.notifications_none_rounded,
+  });
+
+  final String title;
+  final VoidCallback? onBack;
+  final IconData trailingIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 14),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 42,
+            child: onBack == null
+                ? const SizedBox.shrink()
+                : IconButton(
+                    onPressed: onBack,
+                    tooltip: 'Back',
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    color: _ink,
+                  ),
+          ),
+          Expanded(
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _courtGreen,
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+          ),
+          SizedBox(width: 42, child: Icon(trailingIcon, color: _ink, size: 24)),
+        ],
       ),
     );
   }
@@ -858,25 +947,28 @@ class _ScreenTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 14),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (onBack != null) ...[
-            IconButton(
-              onPressed: onBack,
-              tooltip: 'Back',
-              icon: const Icon(Icons.arrow_back_rounded),
-              color: _ink,
-            ),
-            const SizedBox(width: 4),
-          ],
+          SizedBox(
+            width: 42,
+            child: onBack == null
+                ? const SizedBox.shrink()
+                : IconButton(
+                    onPressed: onBack,
+                    tooltip: 'Back',
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    color: _ink,
+                  ),
+          ),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   title,
+                  textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: _ink,
                     fontWeight: FontWeight.w900,
@@ -888,6 +980,7 @@ class _ScreenTitle extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     subtitle!,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: _muted,
                       fontSize: 15,
@@ -899,7 +992,7 @@ class _ScreenTitle extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) ...[const SizedBox(width: 10), trailing!],
+          SizedBox(width: 42, child: trailing ?? const SizedBox.shrink()),
         ],
       ),
     );
@@ -921,16 +1014,12 @@ class _SignalChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final foreground = dark ? Colors.white : _ink;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: dark
-            ? Colors.white.withValues(alpha: 0.1)
-            : _freshGreen.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(8),
+        color: dark ? Colors.white.withValues(alpha: 0.1) : _freshGreen,
+        borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: dark
-              ? Colors.white.withValues(alpha: 0.12)
-              : _freshGreen.withValues(alpha: 0.6),
+          color: dark ? Colors.white.withValues(alpha: 0.12) : _freshGreen,
         ),
       ),
       child: Row(
@@ -1035,10 +1124,10 @@ class _CourtSurfaceIcon extends StatelessWidget {
       width: 46,
       height: 46,
       decoration: BoxDecoration(
-        color: _courtGreen,
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFFDFF8FF),
+        shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: _freshGreen, size: 23),
+      child: Icon(icon, color: _courtGreen, size: 23),
     );
   }
 }
@@ -1581,139 +1670,222 @@ class _SessionDetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sessionInfoText = showQueueLobby
-        ? 'Check in now to enter the live queue. The next four queued players are assigned into a doubles match.'
-        : 'Complete payment first, then check in from your schedule when you arrive at the court.';
+    final eventType = _eventTypeLabel(event.eventType);
+    final courtsLabel = court.address?.trim().isNotEmpty == true
+        ? court.address!.trim()
+        : 'Courts 1, 2, & 3';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _line),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SessionBanner(event: event),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _SignalChip(
-                      icon: Icons.sports_tennis_rounded,
-                      label: _eventTypeLabel(event.eventType),
-                    ),
-                    _SignalChip(
-                      icon: Icons.how_to_reg_rounded,
-                      label: _titleCase(event.status),
-                    ),
-                    if (event.capacity != null)
-                      _SignalChip(
-                        icon: Icons.groups_rounded,
-                        label: '${event.capacity} players',
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _SessionMetaRow(
-                  icon: Icons.schedule_rounded,
-                  text: _formatTimeRange(event.startAt, event.endAt),
-                ),
-                _SessionMetaRow(
-                  icon: Icons.location_on_rounded,
-                  text: court.name,
-                ),
-                const _SessionMetaRow(
-                  icon: Icons.how_to_reg_rounded,
-                  text: 'Open Competitive Play',
-                ),
-                _SessionMetaRow(
-                  icon: Icons.sports_tennis_rounded,
-                  text: _eventTypeLabel(event.eventType),
-                ),
-                _SessionMetaRow(
-                  icon: Icons.groups_rounded,
-                  text: event.capacity == null
-                      ? 'Open player capacity'
-                      : '${event.capacity} player capacity',
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: _chalk,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _line),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 440,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const _SessionBanner(),
+              Positioned(
+                left: 24,
+                right: 24,
+                top: 144,
+                child: _Panel(
+                  padding: const EdgeInsets.fromLTRB(26, 26, 26, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Session info',
-                        style: TextStyle(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _SignalChip(
+                            icon: Icons.sports_tennis_rounded,
+                            label: eventType,
+                          ),
+                          const _SignalChip(
+                            icon: Icons.speed_rounded,
+                            label: 'DUPR 4.0+',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        event.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           color: _ink,
-                          fontSize: 14,
+                          fontSize: 30,
                           fontWeight: FontWeight.w900,
+                          height: 1.08,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        sessionInfoText,
-                        style: const TextStyle(
+                      const SizedBox(height: 8),
+                      const Text.rich(
+                        TextSpan(
+                          text: 'Organized by ',
+                          children: [
+                            TextSpan(
+                              text: 'RallyHub Admin',
+                              style: TextStyle(color: _courtGreen),
+                            ),
+                          ],
+                        ),
+                        style: TextStyle(
                           color: _muted,
-                          fontSize: 12.5,
-                          height: 1.35,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Divider(height: 30, color: _line),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _DetailMetric(
+                              icon: Icons.calendar_month_rounded,
+                              title: _formatEventDate(event.startAt),
+                              detail: _formatTimeRange(
+                                event.startAt,
+                                event.endAt,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          const Expanded(
+                            child: _DetailMetric(
+                              icon: Icons.payments_rounded,
+                              title: 'PHP 500',
+                              detail: 'Per Player',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            children: [
+              _Panel(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _EyebrowIconLabel(
+                      icon: Icons.location_on_outlined,
+                      label: 'LOCATION',
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      court.name,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      courtsLabel,
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 16,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const _MiniMapPreview(),
+                  ],
+                ),
+              ),
+              if (showQueueLobby) ...[
+                const SizedBox(height: 18),
+                _Panel(
+                  color: _freshGreen,
+                  padding: const EdgeInsets.all(22),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Your status\n3rd in Queue',
+                          style: TextStyle(
+                            color: _courtGreen,
+                            fontSize: 30,
+                            height: 1.03,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 86,
+                        height: 86,
+                        decoration: const BoxDecoration(
+                          color: _chalk,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '4/8\nfilled',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _courtGreen,
+                              fontSize: 18,
+                              height: 1.05,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (showQueueLobby) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: _freshGreen,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.groups_rounded, color: _courtGreen),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Your status: 3rd in Queue\nPlayer Lobby: 4/8 filled',
-                            style: TextStyle(
-                              color: _courtGreen,
-                              fontSize: 14,
-                              height: 1.35,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: onJoinLobby,
-                    icon: Icon(actionIcon, size: 18),
-                    label: Text(actionLabel),
-                    style: _primaryButtonStyle(),
-                  ),
-                ),
               ],
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: onJoinLobby,
+                  icon: Icon(actionIcon, size: 18),
+                  label: Text(actionLabel),
+                  style: _primaryButtonStyle(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SessionBanner extends StatelessWidget {
+  const _SessionBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 210,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/pickleball_background.jpg',
+            fit: BoxFit.cover,
+          ),
+          Container(color: _chalk.withValues(alpha: 0.58)),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, _chalk.withValues(alpha: 0.92)],
+              ),
             ),
           ),
         ],
@@ -1722,59 +1894,176 @@ class _SessionDetailsCard extends StatelessWidget {
   }
 }
 
-class _SessionBanner extends StatelessWidget {
-  const _SessionBanner({required this.event});
+class _DetailMetric extends StatelessWidget {
+  const _DetailMetric({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
 
-  final EventSummary event;
+  final IconData icon;
+  final String title;
+  final String detail;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 124,
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: const BoxDecoration(color: _freshGreen),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -20,
-            bottom: -34,
-            child: Icon(
-              Icons.sports_tennis_rounded,
-              color: _courtGreen.withValues(alpha: 0.12),
-              size: 124,
-            ),
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.end,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: _courtGreen, size: 22),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                event.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                title,
                 style: const TextStyle(
-                  color: _courtGreen,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  height: 1.05,
+                  color: _ink,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  height: 1.25,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
-                _formatTimeRange(event.startAt, event.endAt),
+                detail,
                 style: const TextStyle(
-                  color: _courtGreen,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
+                  color: _muted,
+                  fontSize: 14,
+                  height: 1.25,
                 ),
               ),
             ],
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _EyebrowIconLabel extends StatelessWidget {
+  const _EyebrowIconLabel({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: _ink, size: 22),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniMapPreview extends StatelessWidget {
+  const _MiniMapPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: Container(
+        height: 128,
+        width: double.infinity,
+        color: const Color(0xFFDDE9C8),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CustomPaint(painter: _MapPreviewPainter()),
+            const Center(
+              child: Icon(
+                Icons.location_on_rounded,
+                color: _freshGreen,
+                size: 54,
+                shadows: [
+                  Shadow(
+                    color: Color(0x66000000),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _MapPreviewPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final road = Paint()
+      ..color = Colors.white.withValues(alpha: 0.76)
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke;
+    final water = Paint()
+      ..color = const Color(0xFF96D8BF).withValues(alpha: 0.72)
+      ..strokeWidth = 18
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final divider = Paint()
+      ..color = _courtGreen.withValues(alpha: 0.56)
+      ..strokeWidth = 4;
+
+    canvas.drawLine(
+      Offset(size.width * 0.30, 0),
+      Offset(size.width * 0.30, size.height),
+      divider,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.70, 0),
+      Offset(size.width * 0.70, size.height),
+      divider,
+    );
+    final waterPath = Path()
+      ..moveTo(size.width * 0.55, -10)
+      ..quadraticBezierTo(
+        size.width * 0.62,
+        size.height * 0.35,
+        size.width * 0.55,
+        size.height * 0.62,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.47,
+        size.height * 0.92,
+        size.width * 0.58,
+        size.height + 10,
+      );
+    canvas.drawPath(waterPath, water);
+    canvas.drawLine(
+      Offset(-20, size.height * 0.15),
+      Offset(size.width * 0.42, size.height * 0.92),
+      road,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.12, size.height),
+      Offset(size.width * 0.42, -10),
+      road,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.74, size.height),
+      Offset(size.width + 20, size.height * 0.30),
+      road,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _MySessionCard extends StatelessWidget {
@@ -1810,7 +2099,7 @@ class _MySessionCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
           decoration: BoxDecoration(
             color: _freshGreen,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(32),
           ),
           child: Row(
             children: [
@@ -1837,7 +2126,7 @@ class _MySessionCard extends StatelessWidget {
                       statusLabel,
                       style: const TextStyle(
                         color: _courtGreen,
-                        fontSize: 46,
+                        fontSize: 52,
                         fontWeight: FontWeight.w900,
                         height: 0.92,
                         letterSpacing: 0,
@@ -1949,11 +2238,11 @@ class _NextMatchupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = match != null && onTap != null;
     return Material(
-      color: const Color(0xFFFFD0E8),
-      borderRadius: BorderRadius.circular(8),
+      color: _blush,
+      borderRadius: BorderRadius.circular(30),
       child: InkWell(
         onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(30),
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(
@@ -2222,7 +2511,7 @@ class _UpcomingMatchCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
           decoration: BoxDecoration(
             color: _freshGreen,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(34),
           ),
           child: Column(
             children: [
@@ -2240,7 +2529,7 @@ class _UpcomingMatchCard extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: _courtGreen,
-                  fontSize: 42,
+                  fontSize: 48,
                   fontWeight: FontWeight.w900,
                   height: 1,
                 ),
@@ -2248,7 +2537,7 @@ class _UpcomingMatchCard extends StatelessWidget {
               const SizedBox(height: 14),
               const _SignalChip(
                 icon: Icons.timer_rounded,
-                label: 'Starts soon',
+                label: 'Starts in 12:45',
               ),
             ],
           ),
@@ -2358,7 +2647,7 @@ class _MatchTeamRow extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: _chalk,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(28),
           ),
           child: Row(
             textDirection: alignEnd ? TextDirection.rtl : TextDirection.ltr,
@@ -2430,18 +2719,56 @@ class _LiveMatchPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: _courtGreen,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 34),
+      decoration: const BoxDecoration(color: _liveSurface),
       child: Column(
         children: [
+          Row(
+            children: [
+              IconButton.filled(
+                onPressed: onLeaveCourt,
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.18),
+                  foregroundColor: _chalk,
+                ),
+                icon: const Icon(Icons.close_rounded),
+              ),
+              const Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'LIVE MATCH',
+                      style: TextStyle(
+                        color: _freshGreen,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Tournament QF',
+                      style: TextStyle(color: _chalk, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton.filled(
+                onPressed: () {},
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.18),
+                  foregroundColor: _chalk,
+                ),
+                icon: const Icon(Icons.more_vert_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 34),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
             decoration: BoxDecoration(
               color: _freshGreen,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
               court.name,
@@ -2476,7 +2803,7 @@ class _LiveMatchPanel extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             ),
             child: Row(
@@ -2519,7 +2846,7 @@ class _LiveMatchPanel extends StatelessWidget {
                 side: BorderSide(color: Colors.white.withValues(alpha: 0.36)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(999),
                 ),
               ),
             ),
@@ -2543,7 +2870,7 @@ class _LiveTeamBlock extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(34),
         border: Border.all(color: _freshGreen.withValues(alpha: 0.32)),
       ),
       child: Column(
@@ -2552,7 +2879,7 @@ class _LiveTeamBlock extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
               color: _chalk,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
               label,
@@ -2610,21 +2937,55 @@ class _VerificationPanel extends StatelessWidget {
     if (verified) {
       return Column(
         children: [
+          const Text(
+            'VICTORY',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _courtGreen,
+              fontSize: 48,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Ranked Doubles Match - Center Court',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _muted,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 36),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
             decoration: BoxDecoration(
               color: _freshGreen,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: _freshGreen.withValues(alpha: 0.28),
+                  blurRadius: 26,
+                  offset: const Offset(0, 14),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SignalChip(
-                  icon: Icons.emoji_events_rounded,
-                  label: 'Winners',
+                const Row(
+                  children: [
+                    _SignalChip(
+                      icon: Icons.emoji_events_rounded,
+                      label: 'Winners',
+                    ),
+                    Spacer(),
+                    Icon(Icons.emoji_events_rounded, color: _courtGreen),
+                  ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 18),
                 for (final player in match.teamOne) ...[
                   _WinnerLine(player: player),
                   const SizedBox(height: 10),
@@ -2633,7 +2994,7 @@ class _VerificationPanel extends StatelessWidget {
                 Row(
                   children: [
                     const Text(
-                      'Score',
+                      'SCORE',
                       style: TextStyle(
                         color: _courtGreen,
                         fontSize: 13,
@@ -2642,10 +3003,10 @@ class _VerificationPanel extends StatelessWidget {
                     ),
                     const Spacer(),
                     Text(
-                      '${scoreSubmission?.teamOneScore ?? 11}-${scoreSubmission?.teamTwoScore ?? 9}',
+                      '${scoreSubmission?.teamOneScore ?? 11} - ${scoreSubmission?.teamTwoScore ?? 9}',
                       style: const TextStyle(
                         color: _courtGreen,
-                        fontSize: 42,
+                        fontSize: 54,
                         fontWeight: FontWeight.w900,
                         height: 1,
                       ),
@@ -2655,38 +3016,82 @@ class _VerificationPanel extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 22),
           _Panel(
+            color: _softOlive,
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SignalChip(
+                  icon: Icons.person_outline_rounded,
+                  label: 'Opponents',
+                ),
+                const SizedBox(height: 16),
+                for (final player in match.teamTwo) ...[
+                  _OpponentLine(player: player),
+                  const SizedBox(height: 10),
+                ],
+                const Divider(height: 24, color: _line),
+                Row(
+                  children: [
+                    const Text(
+                      'SCORE',
+                      style: TextStyle(
+                        color: _muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${scoreSubmission?.teamTwoScore ?? 9} - ${scoreSubmission?.teamOneScore ?? 11}',
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 42),
+          _Panel(
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: const [
                 CircleAvatar(
+                  radius: 23,
                   backgroundColor: _freshGreen,
                   child: Icon(Icons.trending_up_rounded, color: _courtGreen),
                 ),
-                SizedBox(width: 12),
+                SizedBox(width: 14),
                 Expanded(
                   child: Text(
-                    'Rating impact\nCalculated after rating jobs are enabled.',
+                    'Rating Impact\n+15 Rating',
                     style: TextStyle(
                       color: _ink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
                       height: 1.35,
                     ),
                   ),
                 ),
                 Text(
-                  '+15',
+                  '4.35',
                   style: TextStyle(
                     color: _courtGreen,
-                    fontSize: 24,
+                    fontSize: 32,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 40),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -2702,23 +3107,56 @@ class _VerificationPanel extends StatelessWidget {
 
     return Column(
       children: [
-        const SizedBox(height: 10),
+        const SizedBox(height: 2),
         Container(
-          width: 132,
-          height: 132,
+          width: 190,
+          height: 190,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _softOlive.withValues(alpha: 0.48),
             shape: BoxShape.circle,
-            border: Border.all(color: _line, width: 8),
+            border: Border.all(color: _line.withValues(alpha: 0.9), width: 8),
           ),
-          child: const Icon(
-            Icons.more_horiz_rounded,
-            color: Color(0xFF80546E),
-            size: 42,
+          child: Center(
+            child: Container(
+              width: 92,
+              height: 92,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.more_horiz_rounded,
+                color: Color(0xFF80546E),
+                size: 42,
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 34),
+        const Text(
+          'Verification in Progress',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _ink,
+            fontSize: 29,
+            fontWeight: FontWeight.w900,
+            height: 1.08,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Your match has ended. Staff is reviewing and confirming the official result.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _muted,
+            fontSize: 19,
+            height: 1.4,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 42),
         _Panel(
+          padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
           child: Column(
             children: [
               _SessionMetaRow(
@@ -2784,7 +3222,7 @@ class _WinnerLine extends StatelessWidget {
     return Row(
       children: [
         CircleAvatar(
-          radius: 20,
+          radius: 21,
           backgroundColor: _courtGreen,
           child: Text(
             player.displayName.characters.first,
@@ -2797,15 +3235,77 @@ class _WinnerLine extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            player.displayName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _courtGreen,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                player.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _courtGreen,
+                  fontSize: 25,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                '4.2 Rating',
+                style: TextStyle(
+                  color: _courtGreen,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OpponentLine extends StatelessWidget {
+  const _OpponentLine({required this.player});
+
+  final MatchParticipantSummary player;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 21,
+          backgroundColor: _softOlive,
+          child: const Icon(Icons.person_outline_rounded, color: _muted),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                player.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '4.1 Rating',
+                style: TextStyle(
+                  color: _ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -3016,6 +3516,26 @@ String _formatTimeRange(DateTime startAt, DateTime endAt) {
   return '${_formatClock(startAt.toLocal())} - ${_formatClock(endAt.toLocal())}';
 }
 
+String _formatEventDate(DateTime value) {
+  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final local = value.toLocal();
+  return '${weekdays[local.weekday - 1]}, ${months[local.month - 1]} ${local.day}';
+}
+
 String _formatClock(DateTime value) {
   final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
   final minute = value.minute.toString().padLeft(2, '0');
@@ -3042,8 +3562,8 @@ ButtonStyle _primaryButtonStyle() {
   return FilledButton.styleFrom(
     backgroundColor: _freshGreen,
     foregroundColor: _ink,
-    padding: const EdgeInsets.symmetric(vertical: 14),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
     textStyle: const TextStyle(fontWeight: FontWeight.w900),
   );
 }
@@ -3052,8 +3572,8 @@ ButtonStyle _secondaryButtonStyle() {
   return OutlinedButton.styleFrom(
     foregroundColor: _courtGreen,
     side: const BorderSide(color: _line),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
     textStyle: const TextStyle(fontWeight: FontWeight.w900),
   );
 }
@@ -3062,8 +3582,8 @@ ButtonStyle _dangerOutlineButtonStyle() {
   return OutlinedButton.styleFrom(
     foregroundColor: const Color(0xFFD34343),
     side: const BorderSide(color: Color(0xFFD34343)),
-    padding: const EdgeInsets.symmetric(vertical: 14),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    padding: const EdgeInsets.symmetric(vertical: 15),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
   );
 }
 
@@ -3193,26 +3713,31 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _Panel extends StatelessWidget {
-  const _Panel({required this.child, this.color = _paper});
+  const _Panel({
+    required this.child,
+    this.color = Colors.white,
+    this.padding = const EdgeInsets.all(20),
+  });
 
   final Widget child;
   final Color color;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: padding,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(8),
-        border: color == _paper ? Border.all(color: _line) : null,
-        boxShadow: color == _paper
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _line),
+        boxShadow: color == Colors.white || color == _paper
             ? [
                 BoxShadow(
-                  color: _ink.withValues(alpha: 0.035),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
+                  color: _ink.withValues(alpha: 0.045),
+                  blurRadius: 26,
+                  offset: const Offset(0, 12),
                 ),
               ]
             : null,

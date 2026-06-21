@@ -62,6 +62,8 @@ Notifications are opened from the top `RallyHub` header bell, matching the proto
 - `Courts` -> `HomePlaceholderPage` / `_DiscoverCourtsTab`
 - `Court Details View Page` -> `CourtDetailsPage`
 - `Session Details` -> `frontend/lib/features/home/pages/play/session_details_page.dart`
+- `Complete Payment` -> `frontend/lib/features/home/pages/play/payment_step_page.dart`
+- `Schedule / Your Schedule` -> `frontend/lib/features/home/pages/play/schedule_page.dart`
 - `Active Session / In Queue` -> `frontend/lib/features/home/pages/play/my_session_page.dart`
 - `Up Next` -> `frontend/lib/features/home/pages/play/upcoming_match_page.dart`
 - `Live Match` -> `frontend/lib/features/home/pages/play/active_match_page.dart`
@@ -72,6 +74,6 @@ Notifications are opened from the top `RallyHub` header bell, matching the proto
 ## Deferred Frames
 
 - `Book Private Court Flow` and `Select Timeslot (with Nav)` -> `BookingsPage`
-- `Complete Payment` / `Payment Flow` -> `PaymentFlowPage`
+- `Payment Flow` compatibility route -> `PaymentFlowPage`
 
-These remain visible as unavailable states until booking and payment backend work is implemented. They do not create in-memory reservations or misleading local state. The functional open-play path therefore uses `Check In Now` directly for the session check-in API rather than blocking on the deferred payment screen.
+Private court booking/payment frames remain visible as unavailable states until booking and payment backend work is implemented. The player open-play path now includes the Figma `Complete Payment` and `Your Schedule` screens as functional routing steps before the live check-in API call.

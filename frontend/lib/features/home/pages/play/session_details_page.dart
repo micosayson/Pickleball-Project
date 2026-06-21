@@ -25,11 +25,10 @@ class _SessionDetailsPage extends StatelessWidget {
       children: [
         _PageHeader(
           title: 'Session Details',
-          detail: '${court.name} - ${_eventTypeLabel(event.eventType)}',
-          icon: Icons.fact_check_rounded,
+          detail: '',
+          icon: Icons.share_rounded,
           onBack: onBack,
         ),
-        const SizedBox(height: 16),
         _SessionDetailsCard(
           court: court,
           event: event,

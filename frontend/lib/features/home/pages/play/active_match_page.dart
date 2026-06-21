@@ -15,17 +15,20 @@ class _ActiveMatchPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const _ScreenTitle(title: 'Live Match', subtitle: 'Tournament QF'),
-        const SizedBox(height: 16),
-        _LiveMatchPanel(
-          court: court,
-          match: match,
-          onFinishMatch: onShowMatchResult,
-          onLeaveCourt: onLeaveCourt,
-        ),
-      ],
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(
+        minHeight:
+            MediaQuery.sizeOf(context).height -
+            MediaQuery.paddingOf(context).top,
+      ),
+      color: _liveSurface,
+      child: _LiveMatchPanel(
+        court: court,
+        match: match,
+        onFinishMatch: onShowMatchResult,
+        onLeaveCourt: onLeaveCourt,
+      ),
     );
   }
 }

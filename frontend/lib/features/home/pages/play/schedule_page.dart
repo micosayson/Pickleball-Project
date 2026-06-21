@@ -13,137 +13,316 @@ class _SchedulePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const _ScreenTitle(title: 'Your Schedule', subtitle: 'Today'),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 72,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemBuilder: (context, index) {
-              final selected = index == 2;
-              return Container(
-                width: 54,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? _freshGreen : Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: selected ? _freshGreen : _line),
-                ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ['Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-                      style: const TextStyle(
+                      'YOUR SCHEDULE',
+                      style: TextStyle(
                         color: _muted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
-                      '${22 + index}',
-                      style: const TextStyle(
+                      'Today, Oct 24',
+                      style: TextStyle(
                         color: _ink,
-                        fontSize: 18,
+                        fontSize: 28,
                         fontWeight: FontWeight.w900,
+                        height: 1,
                       ),
                     ),
                   ],
                 ),
-              );
-            },
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemCount: 5,
+              ),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: const BoxDecoration(
+                  color: _softOlive,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.calendar_month_rounded,
+                  color: _ink,
+                  size: 24,
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 28),
+          const _DateStrip(),
+          const SizedBox(height: 48),
+          _ScheduleTimeline(court: court, event: event, onCheckIn: onCheckIn),
+        ],
+      ),
+    );
+  }
+}
+
+class _DateStrip extends StatelessWidget {
+  const _DateStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    const days = [
+      ('TUE', '22'),
+      ('WED', '23'),
+      ('THU', '24'),
+      ('FRI', '25'),
+      ('SAT', '26'),
+    ];
+    return SizedBox(
+      height: 80,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: days.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 18),
+        itemBuilder: (context, index) {
+          final selected = index == 2;
+          return Container(
+            width: 58,
+            decoration: BoxDecoration(
+              color: selected ? _freshGreen : _softOlive,
+              shape: BoxShape.circle,
+              border: selected
+                  ? Border.all(color: _courtGreen, width: 2)
+                  : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  days[index].$1,
+                  style: TextStyle(
+                    color: selected ? _courtGreen : _muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  days[index].$2,
+                  style: TextStyle(
+                    color: selected ? _ink : _muted,
+                    fontSize: 25,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ScheduleTimeline extends StatelessWidget {
+  const _ScheduleTimeline({
+    required this.court,
+    required this.event,
+    required this.onCheckIn,
+  });
+
+  final CourtSummary court;
+  final EventSummary event;
+  final VoidCallback onCheckIn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: const [
+            _TimelineDot(active: false),
+            _TimelineLine(height: 150),
+            _TimelineDot(active: true),
+            _TimelineLine(height: 190),
+          ],
         ),
-        const SizedBox(height: 16),
-        _ScheduleCard(
-          icon: Icons.lock_clock_rounded,
-          title: 'Private Court Rental',
-          detail: '${court.name} - Confirmed',
-          status: 'Confirmed',
-        ),
-        const SizedBox(height: 12),
-        _ScheduleCard(
-          icon: Icons.sports_tennis_rounded,
-          title: event.name,
-          detail:
-              '${_formatTimeRange(event.startAt, event.endAt)} - ${court.name}',
-          status: 'Joined',
-          action: FilledButton.icon(
-            onPressed: onCheckIn,
-            icon: const Icon(Icons.login_rounded, size: 18),
-            label: const Text('Check-in'),
-            style: _primaryButtonStyle(),
+        const SizedBox(width: 24),
+        Expanded(
+          child: Column(
+            children: [
+              const _ScheduleEventCard(
+                time: '10:00 AM - 11:30 AM',
+                title: 'Private Court\nRental',
+                location: 'Court 4 - Downtown Rally Park',
+                status: 'Confirmed',
+              ),
+              const SizedBox(height: 40),
+              _ScheduleEventCard(
+                time: _formatTimeRange(event.startAt, event.endAt),
+                title: event.name,
+                location: '${court.name} - ${court.address ?? 'Athletic Club'}',
+                status: 'Joined',
+                highlighted: true,
+                action: FilledButton(
+                  onPressed: onCheckIn,
+                  style: _primaryButtonStyle(),
+                  child: const Text('Check-in'),
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 12),
-        const _ScheduleCard(
-          icon: Icons.groups_rounded,
-          title: 'Open Play',
-          detail: 'Community queue available after check-in.',
-          status: 'Open',
         ),
       ],
     );
   }
 }
 
-class _ScheduleCard extends StatelessWidget {
-  const _ScheduleCard({
-    required this.icon,
+class _TimelineDot extends StatelessWidget {
+  const _TimelineDot({required this.active});
+
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(
+        color: active ? _freshGreen : _muted,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _TimelineLine extends StatelessWidget {
+  const _TimelineLine({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 2, height: height, color: _softOlive);
+  }
+}
+
+class _ScheduleEventCard extends StatelessWidget {
+  const _ScheduleEventCard({
+    required this.time,
     required this.title,
-    required this.detail,
+    required this.location,
     required this.status,
+    this.highlighted = false,
     this.action,
   });
 
-  final IconData icon;
+  final String time;
   final String title;
-  final String detail;
+  final String location;
   final String status;
+  final bool highlighted;
   final Widget? action;
 
   @override
   Widget build(BuildContext context) {
     return _Panel(
+      padding: const EdgeInsets.all(18),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _CourtSurfaceIcon(icon: icon),
-              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: _ink,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      detail,
-                      style: const TextStyle(color: _muted, fontSize: 13),
-                    ),
-                  ],
+                child: Text(
+                  time,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              _SignalChip(icon: Icons.check_rounded, label: status),
+              _ScheduleStatusChip(label: status, joined: highlighted),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: TextStyle(
+              color: highlighted ? _ink : _muted,
+              fontSize: highlighted ? 26 : 21,
+              height: 1.14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(Icons.location_on_outlined, color: _muted, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  location,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 16,
+                    height: 1.25,
+                  ),
+                ),
+              ),
             ],
           ),
           if (action != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
             SizedBox(width: double.infinity, child: action!),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ScheduleStatusChip extends StatelessWidget {
+  const _ScheduleStatusChip({required this.label, required this.joined});
+
+  final String label;
+  final bool joined;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: joined ? _freshGreen : _softOlive,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.circle,
+            color: joined ? _courtGreen : const Color(0xFF67C8AE),
+            size: 8,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: _muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ],
       ),
     );

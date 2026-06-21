@@ -16,88 +16,100 @@ class _PaymentStepPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _PageHeader(
-          title: 'Complete Payment',
-          detail: 'RallyHub checkout',
-          icon: Icons.payments_rounded,
-          onBack: onBack,
-        ),
-        const SizedBox(height: 16),
-        _Panel(
+        _FlowTopBar(title: 'RallyHub', onBack: onBack),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 34, 24, 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _SectionTitle(icon: Icons.person_rounded, title: 'Contact'),
-              const SizedBox(height: 12),
-              const _PaymentField(
-                icon: Icons.badge_rounded,
-                value: 'Alex Rivera',
-              ),
-              const SizedBox(height: 10),
-              const _PaymentField(
-                icon: Icons.email_rounded,
-                value: 'alex.rivera@example.com',
-              ),
-              const SizedBox(height: 10),
-              const _PaymentField(
-                icon: Icons.phone_rounded,
-                value: '+63 917 123 4567',
-              ),
-              const Divider(height: 30, color: _line),
               const Text(
-                'Payment Method',
+                'Complete Payment',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _ink,
-                  fontSize: 16,
+                  fontSize: 30,
                   fontWeight: FontWeight.w900,
+                  height: 1.05,
                 ),
               ),
               const SizedBox(height: 12),
-              const Row(
-                children: [
-                  Expanded(
-                    child: _PaymentMethod(label: 'GCash', selected: true),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(child: _PaymentMethod(label: 'Maya')),
-                ],
+              const Text(
+                'Secure your spot for the upcoming match.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _muted,
+                  fontSize: 17,
+                  height: 1.35,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              const SizedBox(height: 8),
-              const _PaymentMethod(label: 'Credit/Debit Card'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+              const SizedBox(height: 42),
               const _SectionTitle(
-                icon: Icons.receipt_long_rounded,
-                title: 'Summary',
+                icon: Icons.person_outline_rounded,
+                title: 'Contact Information',
               ),
-              const SizedBox(height: 12),
-              _PaymentSummaryRow(label: event.name, value: 'PHP 500.00'),
-              const _PaymentSummaryRow(
-                label: 'Processing Fee',
-                value: 'PHP 15.00',
-              ),
-              const Divider(height: 26, color: _line),
-              const _PaymentSummaryRow(
-                label: 'Total',
-                value: 'PHP 515.00',
-                strong: true,
+              const SizedBox(height: 22),
+              const _PaymentInputField(
+                label: 'Full Name',
+                value: 'Alex Rivera',
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: onConfirmPayment,
-                  icon: const Icon(Icons.check_circle_rounded, size: 18),
-                  label: const Text('Confirm Payment'),
-                  style: _primaryButtonStyle(),
+              const _PaymentInputField(
+                label: 'Email Address',
+                value: 'alex.rivera@example.com',
+              ),
+              const SizedBox(height: 16),
+              const _PaymentInputField(
+                label: 'Mobile Number',
+                value: '+63 917 123 4567',
+              ),
+              const SizedBox(height: 44),
+              const _SectionTitle(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Payment Method',
+              ),
+              const SizedBox(height: 22),
+              const _PaymentMethodPill(
+                label: 'GCash',
+                detail: 'Pay via GCash app',
+                mark: 'G',
+                selected: true,
+                color: Color(0xFF2F6BE6),
+              ),
+              const SizedBox(height: 16),
+              const _PaymentMethodPill(
+                label: 'Maya',
+                detail: 'Pay via Maya wallet',
+                mark: 'M',
+                color: _ink,
+              ),
+              const SizedBox(height: 24),
+              _Panel(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _PaymentSummaryRow(label: event.name, value: 'PHP 500.00'),
+                    const _PaymentSummaryRow(
+                      label: 'Processing Fee',
+                      value: 'PHP 15.00',
+                    ),
+                    const Divider(height: 26, color: _line),
+                    const _PaymentSummaryRow(
+                      label: 'Total',
+                      value: 'PHP 515.00',
+                      strong: true,
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 22),
+              FilledButton(
+                onPressed: onConfirmPayment,
+                style: _primaryButtonStyle(),
+                child: const Text('Confirm Payment'),
               ),
             ],
           ),
@@ -107,76 +119,122 @@ class _PaymentStepPage extends StatelessWidget {
   }
 }
 
-class _PaymentField extends StatelessWidget {
-  const _PaymentField({required this.icon, required this.value});
+class _PaymentInputField extends StatelessWidget {
+  const _PaymentInputField({required this.label, required this.value});
 
-  final IconData icon;
+  final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _chalk,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _line),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: _courtGreen, size: 19),
-          const SizedBox(width: 10),
-          Expanded(
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: _line),
+          ),
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Positioned(
+          left: 12,
+          top: -8,
+          child: Container(
+            color: _chalk,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
-              value,
+              label,
               style: const TextStyle(
-                color: _ink,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
+                color: _muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _PaymentMethod extends StatelessWidget {
-  const _PaymentMethod({required this.label, this.selected = false});
+class _PaymentMethodPill extends StatelessWidget {
+  const _PaymentMethodPill({
+    required this.label,
+    required this.detail,
+    required this.mark,
+    required this.color,
+    this.selected = false,
+  });
 
   final String label;
+  final String detail;
+  final String mark;
+  final Color color;
   final bool selected;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: selected ? _freshGreen : _chalk,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: selected ? _freshGreen : _line),
+        color: selected ? _freshGreen.withValues(alpha: 0.10) : Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: selected ? _courtGreen : _line,
+          width: selected ? 2 : 1,
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            selected ? Icons.radio_button_checked : Icons.radio_button_off,
-            color: _courtGreen,
-            size: 17,
-          ),
-          const SizedBox(width: 7),
-          Flexible(
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: color,
             child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
+              mark,
               style: const TextStyle(
-                color: _ink,
-                fontSize: 13,
+                color: Colors.white,
+                fontSize: 18,
                 fontWeight: FontWeight.w900,
               ),
             ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  style: const TextStyle(color: _muted, fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            selected
+                ? Icons.radio_button_checked_rounded
+                : Icons.radio_button_off_rounded,
+            color: _courtGreen,
+            size: 24,
           ),
         ],
       ),

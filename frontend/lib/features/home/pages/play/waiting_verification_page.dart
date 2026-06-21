@@ -15,26 +15,14 @@ class _WaitingVerificationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isVerified = scoreSubmission?.status == 'verified';
-    return Column(
-      children: [
-        _PageHeader(
-          title: isVerified ? 'Victory' : 'Verification in Progress',
-          detail: isVerified
-              ? 'Verified result - return to queue when ready.'
-              : 'Staff is reviewing the official result.',
-          icon: isVerified
-              ? Icons.emoji_events_rounded
-              : Icons.hourglass_top_rounded,
-        ),
-        const SizedBox(height: 16),
-        _VerificationPanel(
-          court: court,
-          match: match,
-          scoreSubmission: scoreSubmission,
-          onRefreshStatus: onRefreshStatus,
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+      child: _VerificationPanel(
+        court: court,
+        match: match,
+        scoreSubmission: scoreSubmission,
+        onRefreshStatus: onRefreshStatus,
+      ),
     );
   }
 }

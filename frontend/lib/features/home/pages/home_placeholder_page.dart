@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/navigation/app_routes.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/network/api_endpoints.dart';
 import '../../../core/network/api_exception.dart';
 import '../../auth/pages/login_page.dart';
 import '../../auth/services/auth_service.dart';
@@ -10,7 +12,6 @@ import '../../events/services/event_service.dart';
 import 'court_details_page.dart';
 import 'dashboard_page.dart';
 import 'notifications_page.dart';
-import 'matches_list_page.dart';
 import 'profile_history_page.dart';
 
 part 'play/active_match_page.dart';
@@ -210,12 +211,14 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                 selectCourt: _selectCourt,
                 openCourtDetails: _openCourtDetails,
               ),
-              2 => const _FigmaFrameTab(
-                title: 'Matches',
-                detail:
-                    'Assigned, active, and verified match records from the open-play flow.',
-                icon: Icons.sports_score_rounded,
-                child: MatchesListContent(),
+              2 => _MatchesTab(
+                onDiscoverEvents: () {
+                  setState(() {
+                    _selectedIndex = 1;
+                    _playPage = _PlayPage.status;
+                  });
+                },
+                onFindCourt: _showDiscoverCourts,
               ),
               3 => const _FigmaFrameTab(
                 title: 'Sessions',
@@ -303,7 +306,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                       child: Center(
                         child: ConstrainedBox(
                           constraints: BoxConstraints(
-                            maxWidth: isWide ? 1120 : 430,
+                            maxWidth: usesPrototypeHeader ? 430 : 390,
                           ),
                           child: content,
                         ),
@@ -318,56 +321,68 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
       ),
       bottomNavigationBar: usesPrototypeHeader
           ? null
-          : SafeArea(
-              minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: _paper,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: _line),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _ink.withValues(alpha: 0.12),
-                      blurRadius: 24,
-                      offset: const Offset(0, 12),
+          : Center(
+              heightFactor: 1,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 390),
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: _paper,
+                    border: Border(top: BorderSide(color: _line)),
+                  ),
+                  child: SafeArea(
+                    minimum: const EdgeInsets.fromLTRB(2, 0, 2, 0),
+                    child: NavigationBar(
+                      height: 56,
+                      elevation: 0,
+                      backgroundColor: _paper,
+                      indicatorColor: _freshGreen,
+                      labelBehavior:
+                          NavigationDestinationLabelBehavior.alwaysShow,
+                      selectedIndex: _selectedIndex,
+                      onDestinationSelected: (index) {
+                        setState(() => _selectedIndex = index);
+                      },
+                      destinations: const [
+                        NavigationDestination(
+                          icon: Icon(Icons.sports_tennis_rounded, size: 18),
+                          selectedIcon: Icon(
+                            Icons.sports_tennis_rounded,
+                            size: 18,
+                          ),
+                          label: 'Play',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.location_on_rounded, size: 18),
+                          selectedIcon: Icon(
+                            Icons.location_on_rounded,
+                            size: 18,
+                          ),
+                          label: 'Courts',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.sports_score_rounded, size: 18),
+                          selectedIcon: Icon(
+                            Icons.sports_score_rounded,
+                            size: 18,
+                          ),
+                          label: 'Matches',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.calendar_month_rounded, size: 18),
+                          selectedIcon: Icon(
+                            Icons.calendar_month_rounded,
+                            size: 18,
+                          ),
+                          label: 'Sessions',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.person_rounded, size: 18),
+                          selectedIcon: Icon(Icons.person_rounded, size: 18),
+                          label: 'Profile',
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: NavigationBar(
-                    height: 70,
-                    elevation: 0,
-                    backgroundColor: _paper,
-                    indicatorColor: _freshGreen,
-                    labelBehavior:
-                        NavigationDestinationLabelBehavior.alwaysShow,
-                    selectedIndex: _selectedIndex,
-                    onDestinationSelected: (index) {
-                      setState(() => _selectedIndex = index);
-                    },
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.sports_tennis_rounded),
-                        label: 'Play',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.location_on_rounded),
-                        label: 'Courts',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.sports_score_rounded),
-                        label: 'Matches',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.calendar_month_rounded),
-                        label: 'Sessions',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.person_rounded),
-                        label: 'Profile',
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -455,7 +470,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
       _activeStatus = null;
       _localScoreSubmission = null;
       _playPage = _PlayPage.status;
-      _selectedIndex = 0;
+      _selectedIndex = 1;
     });
   }
 
@@ -657,20 +672,6 @@ class _DiscoverOrFlowTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shouldShowDiscover =
-        playPage == _PlayPage.status &&
-        selectedCourt == null &&
-        selectedSession == null &&
-        activeSession == null;
-
-    if (shouldShowDiscover) {
-      return _DiscoverCourtsTab(
-        courtsFuture: courtsFuture,
-        selectCourt: selectCourt,
-        openCourtDetails: openCourtDetails,
-      );
-    }
-
     return _PlayFlowPage(
       fullName: fullName,
       selectedCourt: selectedCourt,
@@ -697,6 +698,9 @@ class _DiscoverOrFlowTab extends StatelessWidget {
       onShowMatchResult: onShowMatchResult,
       onRefreshStatus: onRefreshStatus,
       onLeaveCourt: onLeaveCourt,
+      courtsFuture: courtsFuture,
+      selectCourt: selectCourt,
+      openCourtDetails: openCourtDetails,
     );
   }
 }
@@ -716,12 +720,8 @@ class _DiscoverCourtsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _PageHeader(
-          title: 'Courts',
-          detail: 'Choose where you want to play today.',
-          icon: Icons.location_on_rounded,
-        ),
-        const SizedBox(height: 16),
+        const _DiscoverFilterHeader(),
+        const SizedBox(height: 18),
         _CourtDiscoveryPanel(
           courtsFuture: courtsFuture,
           onSelectCourt: selectCourt,
@@ -729,6 +729,105 @@ class _DiscoverCourtsTab extends StatelessWidget {
           maxItems: 12,
         ),
       ],
+    );
+  }
+}
+
+class _DiscoverFilterHeader extends StatelessWidget {
+  const _DiscoverFilterHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: _line),
+            boxShadow: [
+              BoxShadow(
+                color: _ink.withValues(alpha: 0.035),
+                blurRadius: 12,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.search_rounded, color: _muted, size: 17),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Search courts, locations, or clubs...',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _FilterChipButton(icon: Icons.tune_rounded, label: 'Filters'),
+            _FilterChipButton(label: 'Competitive  x', selected: true),
+            _FilterChipButton(label: 'Casual'),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _FilterChipButton extends StatelessWidget {
+  const _FilterChipButton({
+    required this.label,
+    this.icon,
+    this.selected = false,
+  });
+
+  final String label;
+  final IconData? icon;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: selected ? _freshGreen : Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: selected ? _freshGreen : _line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: _ink, size: 14),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            label,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -754,6 +853,418 @@ class _FigmaFrameTab extends StatelessWidget {
         const SizedBox(height: 16),
         child,
       ],
+    );
+  }
+}
+
+class _MatchesTab extends StatelessWidget {
+  const _MatchesTab({
+    required this.onDiscoverEvents,
+    required this.onFindCourt,
+  });
+
+  final VoidCallback onDiscoverEvents;
+  final VoidCallback onFindCourt;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: ApiClient.instance.get(ApiEndpoints.matches),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _MatchesEmptyState(
+            title: 'Loading matches',
+            detail: 'Checking your assigned and completed matches.',
+          );
+        }
+
+        if (snapshot.hasError) {
+          return _MatchesEmptyState(
+            title: 'No matches yet',
+            detail: _matchesErrorDetail(snapshot.error),
+            onDiscoverEvents: onDiscoverEvents,
+            onFindCourt: onFindCourt,
+          );
+        }
+
+        final list = snapshot.data?.data as List<dynamic>? ?? [];
+        if (list.isEmpty) {
+          return _MatchesEmptyState(
+            title: 'No matches yet',
+            detail:
+                'You have not joined any matches yet. Register for an event or find a court to start playing.',
+            onDiscoverEvents: onDiscoverEvents,
+            onFindCourt: onFindCourt,
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Your Matches',
+              style: TextStyle(
+                color: _ink,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _Panel(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                children: [
+                  for (final item in list) ...[
+                    _FigmaMatchRow(
+                      data: Map<String, dynamic>.from(item as Map),
+                    ),
+                    if (item != list.last) const SizedBox(height: 10),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  static String _matchesErrorDetail(Object? error) {
+    if (error is ApiException) {
+      if (error.statusCode == 401 || error.statusCode == 422) {
+        return 'Sign in, then discover events or courts to start playing.';
+      }
+      return error.userMessage;
+    }
+    return 'Register for an event or find a court to start playing.';
+  }
+}
+
+class _MatchesEmptyState extends StatelessWidget {
+  const _MatchesEmptyState({
+    required this.title,
+    required this.detail,
+    this.onDiscoverEvents,
+    this.onFindCourt,
+  });
+
+  final String title;
+  final String detail;
+  final VoidCallback? onDiscoverEvents;
+  final VoidCallback? onFindCourt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 16),
+        const _MatchEmptyIllustration(),
+        const SizedBox(height: 18),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 34),
+          child: Text(
+            detail,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: _muted,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        if (onDiscoverEvents != null)
+          Center(
+            child: SizedBox(
+              height: 42,
+              child: FilledButton.icon(
+                onPressed: onDiscoverEvents,
+                icon: const Icon(Icons.explore_rounded, size: 15),
+                label: const Text('Discover Events'),
+                style: _primaryButtonStyle().copyWith(
+                  padding: const WidgetStatePropertyAll(
+                    EdgeInsets.symmetric(horizontal: 20),
+                  ),
+                  textStyle: const WidgetStatePropertyAll(
+                    TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (onFindCourt != null) ...[
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: onFindCourt,
+              style: TextButton.styleFrom(
+                foregroundColor: _courtGreen,
+                textStyle: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              child: const Text('Find a Court Near You'),
+            ),
+          ),
+        ],
+        const SizedBox(height: 18),
+        const Text(
+          'SUGGESTED FOR YOU',
+          style: TextStyle(
+            color: _muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SuggestedEventCard(onViewDetails: onDiscoverEvents),
+      ],
+    );
+  }
+}
+
+class _MatchEmptyIllustration extends StatelessWidget {
+  const _MatchEmptyIllustration();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 132,
+        height: 132,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F5DE),
+          shape: BoxShape.circle,
+          border: Border.all(color: _softOlive, width: 3),
+        ),
+        child: Center(
+          child: Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE3E7C8),
+              shape: BoxShape.circle,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(Icons.hub_rounded, color: _courtGreen, size: 32),
+                Positioned(
+                  right: 17,
+                  top: 15,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: _freshGreen,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _courtGreen, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestedEventCard extends StatelessWidget {
+  const _SuggestedEventCard({this.onViewDetails});
+
+  final VoidCallback? onViewDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE7E7CF),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 4,
+                  children: const [
+                    _TinyTag(label: 'TOURNAMENT'),
+                    _TinyTag(label: 'OPEN', color: _freshGreen),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'City Pickleball Open',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Saturday, Oct 14 - 09:00 AM',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _muted,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 30,
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: onViewDetails,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _muted,
+                      backgroundColor: _softOlive,
+                      side: BorderSide.none,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    child: const Text('View Details'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TinyTag extends StatelessWidget {
+  const _TinyTag({required this.label, this.color = _paper});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _line),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: _courtGreen,
+          fontSize: 8.5,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _FigmaMatchRow extends StatelessWidget {
+  const _FigmaMatchRow({required this.data});
+
+  final Map<String, dynamic> data;
+
+  @override
+  Widget build(BuildContext context) {
+    final number = data['match_number']?.toString() ?? '-';
+    final status = _titleCase(
+      data['status']?.toString().replaceAll('_', ' ') ?? 'created',
+    );
+    final winner = data['winner_team_number']?.toString();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _chalk,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _courtGreen,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              number,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Match $number',
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  winner == null ? status : 'Team $winner verified winner',
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _SignalChip(icon: Icons.sports_score_rounded, label: status),
+        ],
+      ),
     );
   }
 }
@@ -784,11 +1295,12 @@ class _HomeHeader extends StatelessWidget {
     };
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 430),
+      constraints: const BoxConstraints(maxWidth: 390),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: _chalk.withValues(alpha: 0.96),
+          color: _chalk,
           border: Border(bottom: BorderSide(color: _line)),
         ),
         child: Row(
@@ -820,7 +1332,7 @@ class _HomeHeader extends StatelessWidget {
               ],
               child: _PlayerAvatar(label: fullName),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: Semantics(
                 label: 'RallyHub $section',
@@ -829,7 +1341,7 @@ class _HomeHeader extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: _courtGreen,
-                    fontSize: 28,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0,
                     height: 1,
@@ -837,12 +1349,17 @@ class _HomeHeader extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            IconButton(
-              onPressed: onOpenNotifications,
-              tooltip: 'Notifications',
-              icon: const Icon(Icons.notifications_none_rounded),
-              color: _courtGreen,
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 34,
+              height: 34,
+              child: IconButton(
+                onPressed: onOpenNotifications,
+                tooltip: 'Notifications',
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.notifications_none_rounded, size: 17),
+                color: _courtGreen,
+              ),
             ),
           ],
         ),
@@ -859,25 +1376,16 @@ class _PlayerAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const radius = 23.0;
-    final initial = label.trim().isEmpty
-        ? 'P'
-        : label.trim().characters.first.toUpperCase();
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      decoration: BoxDecoration(
-        color: _freshGreen,
-        shape: BoxShape.circle,
-        border: Border.all(color: _courtGreen, width: 2),
-      ),
-      child: Center(
-        child: Text(
-          initial,
-          style: TextStyle(
-            color: _ink,
-            fontSize: radius * 0.74,
-            fontWeight: FontWeight.w900,
-          ),
+    return Semantics(
+      label: label.isEmpty ? 'Player menu' : 'Player menu for $label',
+      button: true,
+      child: Container(
+        width: radius * 1.36,
+        height: radius * 1.36,
+        decoration: BoxDecoration(
+          color: _softOlive,
+          shape: BoxShape.circle,
+          border: Border.all(color: _line),
         ),
       ),
     );
@@ -1137,17 +1645,11 @@ class _ActionButtonRow extends StatelessWidget {
     required this.primaryLabel,
     required this.primaryIcon,
     required this.onPrimary,
-    this.secondaryLabel,
-    this.secondaryIcon,
-    this.onSecondary,
   });
 
   final String primaryLabel;
   final IconData primaryIcon;
   final VoidCallback onPrimary;
-  final String? secondaryLabel;
-  final IconData? secondaryIcon;
-  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
@@ -1158,42 +1660,7 @@ class _ActionButtonRow extends StatelessWidget {
       style: _primaryButtonStyle(),
     );
 
-    if (secondaryLabel == null || onSecondary == null) {
-      return SizedBox(width: double.infinity, child: primary);
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 360) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              primary,
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: onSecondary,
-                icon: Icon(secondaryIcon ?? Icons.info_outline_rounded),
-                label: Text(secondaryLabel!),
-                style: _secondaryButtonStyle(),
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(child: primary),
-            const SizedBox(width: 8),
-            OutlinedButton.icon(
-              onPressed: onSecondary,
-              icon: Icon(secondaryIcon ?? Icons.info_outline_rounded),
-              label: Text(secondaryLabel!),
-              style: _secondaryButtonStyle(),
-            ),
-          ],
-        );
-      },
-    );
+    return SizedBox(width: double.infinity, child: primary);
   }
 }
 
@@ -1482,71 +1949,59 @@ class _CourtDiscoveryPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              _SectionTitle(
-                icon: Icons.location_on_rounded,
-                title: 'Nearby courts',
-              ),
-              Spacer(),
-              _SignalChip(icon: Icons.map_rounded, label: 'Live list'),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Nearby Courts',
+          style: TextStyle(
+            color: _ink,
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Choose a court for events, match play, and ladder activity.',
-            style: TextStyle(color: _muted, fontSize: 13.5, height: 1.35),
-          ),
-          const SizedBox(height: 14),
-          FutureBuilder<List<CourtSummary>>(
-            future: courtsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const _CourtLoadingState();
-              }
-              if (snapshot.hasError) {
-                return _CourtMessageState(
-                  icon: Icons.cloud_off_rounded,
-                  title: 'Courts are unavailable',
-                  detail: 'Check the backend connection and try again.',
-                  color: _clay,
-                );
-              }
-
-              final courts = snapshot.data ?? [];
-              if (courts.isEmpty) {
-                return const _CourtMessageState(
-                  icon: Icons.add_location_alt_rounded,
-                  title: 'No courts published yet',
-                  detail:
-                      'Create an active court record to make discovery live.',
-                  color: _courtGreen,
-                );
-              }
-
-              final visibleCourts = courts
-                  .take(maxItems)
-                  .toList(growable: false);
-              return Column(
-                children: [
-                  for (final court in visibleCourts) ...[
-                    _CourtTile(
-                      court: court,
-                      onSelect: () => onSelectCourt(court),
-                      onOpenDetails: () => onOpenDetails(court),
-                    ),
-                    if (court != visibleCourts.last) const SizedBox(height: 10),
-                  ],
-                ],
+        ),
+        const SizedBox(height: 12),
+        FutureBuilder<List<CourtSummary>>(
+          future: courtsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const _CourtLoadingState();
+            }
+            if (snapshot.hasError) {
+              return _CourtMessageState(
+                icon: Icons.cloud_off_rounded,
+                title: 'Courts are unavailable',
+                detail: 'Check the backend connection and try again.',
+                color: _clay,
               );
-            },
-          ),
-        ],
-      ),
+            }
+
+            final courts = snapshot.data ?? [];
+            if (courts.isEmpty) {
+              return const _CourtMessageState(
+                icon: Icons.add_location_alt_rounded,
+                title: 'No courts published yet',
+                detail: 'Create an active court record to make discovery live.',
+                color: _courtGreen,
+              );
+            }
+
+            final visibleCourts = courts.take(maxItems).toList(growable: false);
+            return Column(
+              children: [
+                for (final court in visibleCourts) ...[
+                  _CourtTile(
+                    court: court,
+                    onSelect: () => onSelectCourt(court),
+                    onOpenDetails: () => onOpenDetails(court),
+                  ),
+                  if (court != visibleCourts.last) const SizedBox(height: 18),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -1566,7 +2021,6 @@ class _CourtTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final address = court.address?.trim();
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -1582,70 +2036,302 @@ class _CourtTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const _CourtSurfaceIcon(icon: Icons.sports_tennis_rounded),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          _CourtImageBanner(height: 146, badge: 'High Demand'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  court.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
                   children: [
-                    Text(
-                      court.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _ink,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      color: _muted,
+                      size: 14,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      address == null || address.isEmpty
-                          ? 'Community court'
-                          : address,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _muted,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        address == null || address.isEmpty
+                            ? _courtDistance(court)
+                            : address,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _muted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: onOpenDetails,
-                tooltip: 'Court details',
-                icon: const Icon(Icons.info_outline_rounded),
-                color: _courtGreen,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: const [
-              _SignalChip(
-                icon: Icons.event_available_rounded,
-                label: 'Sessions',
-              ),
-              SizedBox(width: 8),
-              _SignalChip(icon: Icons.groups_rounded, label: 'Queue'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _ActionButtonRow(
-            primaryLabel: 'Court details',
-            primaryIcon: Icons.info_outline_rounded,
-            onPrimary: onOpenDetails,
-            secondaryLabel: 'Sessions',
-            secondaryIcon: Icons.event_available_rounded,
-            onSecondary: onSelect,
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _CourtStat(
+                        label: 'Courts',
+                        value: '${_courtCount(court)} Indoor',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CourtStat(
+                        label: 'Players Here',
+                        value: '${_activePlayerCount(court)} / 48',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Open Sessions',
+                  style: TextStyle(
+                    color: _muted,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                const _OpenSessionChips(),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 42,
+                  child: FilledButton(
+                    onPressed: onSelect,
+                    style: _primaryButtonStyle().copyWith(
+                      textStyle: const WidgetStatePropertyAll(
+                        TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    child: const Text('Select Court'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: onOpenDetails,
+                    style: TextButton.styleFrom(
+                      foregroundColor: _courtGreen,
+                      textStyle: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    child: const Text('View Details'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CourtImageBanner extends StatelessWidget {
+  const _CourtImageBanner({
+    required this.height,
+    this.badge,
+    this.compact = false,
+  });
+
+  final double height;
+  final String? badge;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/pickleball_background.jpg',
+              fit: BoxFit.cover,
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _courtGreen.withValues(alpha: 0.12),
+                    _courtGreen.withValues(alpha: 0.34),
+                  ],
+                ),
+              ),
+            ),
+            if (!compact) const _CourtLineOverlay(),
+            if (badge != null)
+              Positioned(
+                top: compact ? 8 : 12,
+                right: compact ? 8 : 12,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 8 : 10,
+                    vertical: compact ? 4 : 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _freshGreen,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    badge!,
+                    style: TextStyle(
+                      color: _ink,
+                      fontSize: compact ? 8.5 : 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CourtLineOverlay extends StatelessWidget {
+  const _CourtLineOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _CourtLinePainter());
+  }
+}
+
+class _CourtLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.58)
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke;
+    final inset = size.width * 0.08;
+    final court = Rect.fromLTWH(
+      inset,
+      size.height * 0.18,
+      size.width - inset * 2,
+      size.height * 0.64,
+    );
+    canvas.drawRect(court, paint);
+    canvas.drawLine(
+      Offset(court.center.dx, court.top),
+      Offset(court.center.dx, court.bottom),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(court.left, court.center.dy),
+      Offset(court.right, court.center.dy),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _CourtStat extends StatelessWidget {
+  const _CourtStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: _paper,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _muted,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OpenSessionChips extends StatelessWidget {
+  const _OpenSessionChips();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Wrap(
+      spacing: 7,
+      runSpacing: 7,
+      children: [
+        _SessionTimeChip(label: '5:00 PM (12 left)'),
+        _SessionTimeChip(label: '6:30 PM (4 left)'),
+      ],
+    );
+  }
+}
+
+class _SessionTimeChip extends StatelessWidget {
+  const _SessionTimeChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEBF5),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 9.5,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -3547,6 +4233,24 @@ String _eventTypeLabel(String eventType) {
   return _titleCase(eventType.replaceAll('_', ' '));
 }
 
+String _courtDistance(CourtSummary court) {
+  final seed = court.name.codeUnits.fold<int>(0, (sum, code) => sum + code);
+  final value = 0.7 + (seed % 15) / 10;
+  return '${value.toStringAsFixed(1)}km away';
+}
+
+int _activePlayerCount(CourtSummary court) {
+  final seed = court.id.isEmpty
+      ? court.name.length
+      : court.id.codeUnits.fold<int>(0, (sum, code) => sum + code);
+  return 18 + (seed % 25);
+}
+
+int _courtCount(CourtSummary court) {
+  final seed = court.slug.isEmpty ? court.name.length : court.slug.length;
+  return 6 + (seed % 8);
+}
+
 String _titleCase(String value) {
   return value
       .split(' ')
@@ -3563,16 +4267,6 @@ ButtonStyle _primaryButtonStyle() {
     backgroundColor: _freshGreen,
     foregroundColor: _ink,
     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-    textStyle: const TextStyle(fontWeight: FontWeight.w900),
-  );
-}
-
-ButtonStyle _secondaryButtonStyle() {
-  return OutlinedButton.styleFrom(
-    foregroundColor: _courtGreen,
-    side: const BorderSide(color: _line),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
     textStyle: const TextStyle(fontWeight: FontWeight.w900),
   );

@@ -27,6 +27,9 @@ class _PlayFlowPage extends StatelessWidget {
     required this.onShowMatchResult,
     required this.onRefreshStatus,
     required this.onLeaveCourt,
+    required this.courtsFuture,
+    required this.selectCourt,
+    required this.openCourtDetails,
   });
 
   final String fullName;
@@ -54,6 +57,9 @@ class _PlayFlowPage extends StatelessWidget {
   final VoidCallback onShowMatchResult;
   final Future<void> Function() onRefreshStatus;
   final Future<void> Function() onLeaveCourt;
+  final Future<List<CourtSummary>> courtsFuture;
+  final Future<void> Function(CourtSummary) selectCourt;
+  final void Function(CourtSummary) openCourtDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +197,9 @@ class _PlayFlowPage extends StatelessWidget {
               onRefreshStatus();
             }
           : onShowMySession,
+      courtsFuture: courtsFuture,
+      selectCourt: selectCourt,
+      openCourtDetails: openCourtDetails,
     );
   }
 }

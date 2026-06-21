@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/styles/design_tokens.dart';
-import '../pages/onboarding_page.dart';
+import '../pages/login_page.dart';
 import '../../home/pages/home_placeholder_page.dart';
 
 /// AuthGate listens to Supabase auth state and routes to the
-/// correct screen: OnboardingPage if logged out, HomePlaceholderPage if logged in.
+/// correct screen: LoginPage if logged out, HomePlaceholderPage if logged in.
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -32,7 +32,7 @@ class AuthGate extends StatelessWidget {
         if (session != null) {
           return const HomePlaceholderPage();
         } else {
-          return const OnboardingPage();
+          return const LoginPage();
         }
       },
     );

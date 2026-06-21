@@ -52,8 +52,8 @@ void main() {
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Welcome Back'), findsOneWidget);
+    expect(find.text('Email Address'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -66,10 +66,10 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: LoginPage()));
     await tester.pump();
 
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Welcome Back'), findsOneWidget);
+    expect(find.text('Email Address'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
-    expect(find.text('Log in'), findsOneWidget);
+    expect(find.text('Continue  ->'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

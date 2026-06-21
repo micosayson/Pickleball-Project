@@ -105,6 +105,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = false;
   bool _isLoading = false;
   DateTime? _retryAfter;
   final _authService = AuthService();
@@ -175,26 +176,26 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
         children: [
           // Email Field
           const Text(
-            'Email',
+            'Email Address',
             style: TextStyle(
               color: DesignColors.courtGreen,
-              fontSize: 14.0,
+              fontSize: 12.0,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 7.0),
           TextFormField(
             controller: _emailController,
             autofillHints: const [AutofillHints.email],
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
-              hintText: 'name@example.com',
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
+              hintText: 'player@rallyhub.com',
+              hintStyle: const TextStyle(color: Colors.grey, fontSize: 12.5),
               prefixIcon: const Icon(
                 Icons.email_outlined,
                 color: DesignColors.muted,
-                size: 20.0,
+                size: 18.0,
               ),
               filled: true,
               fillColor: const Color(0xFFFFFFF4),
@@ -202,7 +203,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -214,7 +215,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               return null;
             },
           ),
-          const SizedBox(height: 20.0),
+          const SizedBox(height: 14.0),
 
           // Password Field
           Row(
@@ -224,14 +225,32 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                 'Password',
                 style: TextStyle(
                   color: DesignColors.courtGreen,
-                  fontSize: 14.0,
+                  fontSize: 12.0,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox.shrink(),
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Password reset is coming soon.'),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: DesignColors.courtGreen,
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                child: const Text('Forgot password?'),
+              ),
             ],
           ),
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 7.0),
           TextFormField(
             controller: _passwordController,
             autofillHints: const [AutofillHints.password],
@@ -244,7 +263,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               prefixIcon: const Icon(
                 Icons.lock_outlined,
                 color: DesignColors.muted,
-                size: 20.0,
+                size: 18.0,
               ),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -252,7 +271,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
                   color: DesignColors.muted,
-                  size: 20.0,
+                  size: 18.0,
                 ),
                 onPressed: () {
                   setState(() {
@@ -266,7 +285,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -278,18 +297,48 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
               return null;
             },
           ),
-          const SizedBox(height: 22.0),
+          const SizedBox(height: 8.0),
+          Row(
+            children: [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: Checkbox(
+                  value: _rememberMe,
+                  onChanged: (value) {
+                    setState(() => _rememberMe = value ?? false);
+                  },
+                  side: const BorderSide(color: DesignColors.line),
+                  activeColor: DesignColors.freshGreen,
+                  checkColor: DesignColors.ink,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const SizedBox(width: 7),
+              const Expanded(
+                child: Text(
+                  'Remember me',
+                  style: TextStyle(
+                    color: DesignColors.muted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14.0),
 
           // Login Button
           SizedBox(
-            height: 56.0,
+            height: 48.0,
             child: ElevatedButton(
               onPressed: canSubmit ? _submit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: DesignColors.freshGreen,
                 foregroundColor: DesignColors.ink,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+                  borderRadius: BorderRadius.circular(999.0),
                 ),
                 elevation: 0,
                 shadowColor: Colors.transparent,
@@ -304,9 +353,9 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                       ),
                     )
                   : const Text(
-                      'Log in',
+                      'Continue  ->',
                       style: TextStyle(
-                        fontSize: 16.0,
+                        fontSize: 14.0,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0,
                       ),

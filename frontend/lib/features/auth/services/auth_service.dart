@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/network/api_client.dart';
@@ -8,7 +6,7 @@ import '../../../core/network/api_endpoints.dart';
 class AuthService {
   final SupabaseClient _client = Supabase.instance.client;
 
-  Future<void> _syncBackendProfile({String? fullName}) async {
+  Future<void> syncBackendProfile({String? fullName}) async {
     if (_client.auth.currentSession == null) {
       return;
     }
@@ -48,7 +46,7 @@ class AuthService {
       );
       // ignore: avoid_print
       print('AuthService.signIn success session=${response.session != null}');
-      unawaited(_syncBackendProfile());
+      await syncBackendProfile();
       return response;
     } on AuthException catch (error) {
       // ignore: avoid_print
@@ -75,7 +73,7 @@ class AuthService {
       // ignore: avoid_print
       print('AuthService.signUp success session=${response.session != null}');
       if (response.session != null) {
-        unawaited(_syncBackendProfile(fullName: fullName));
+        await syncBackendProfile(fullName: fullName);
       }
       return response;
     } on AuthException catch (error) {

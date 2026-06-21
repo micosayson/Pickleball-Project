@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/navigation/app_routes.dart';
+import '../../../core/network/api_exception.dart';
 import '../../auth/pages/login_page.dart';
 import '../../auth/services/auth_service.dart';
 import '../../courts/services/court_service.dart';
@@ -72,6 +73,11 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
     try {
       await request();
       if (!mounted) return;
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$label failed: ${error.userMessage}')),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -282,6 +288,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
 
   Future<void> _joinLobby(EventSummary event) {
     return _runRequest(() async {
+      await AuthService().syncBackendProfile();
       final status = await const EventService().joinLobby(event.id);
       if (mounted) {
         setState(() {

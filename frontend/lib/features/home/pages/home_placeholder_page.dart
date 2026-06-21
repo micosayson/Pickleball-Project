@@ -17,8 +17,10 @@ part 'play/active_match_page.dart';
 part 'play/court_sessions_page.dart';
 part 'play/match_result_page.dart';
 part 'play/my_session_page.dart';
+part 'play/payment_step_page.dart';
 part 'play/play_flow_page.dart';
 part 'play/play_status_page.dart';
+part 'play/schedule_page.dart';
 part 'play/session_details_page.dart';
 part 'play/upcoming_match_page.dart';
 part 'play/waiting_verification_page.dart';
@@ -31,11 +33,15 @@ const _muted = Color(0xFF727763);
 const _chalk = Color(0xFFFCFCEB);
 const _paper = Color(0xFFFFFFF4);
 const _line = Color(0xFFE6E8C8);
+const _figmaDemoMatchId = 'figma-demo-match';
 
 enum _PlayPage {
   status,
   courtSessions,
   sessionDetails,
+  payment,
+  schedule,
+  queueLobby,
   mySession,
   upcomingMatch,
   activeMatch,
@@ -57,8 +63,61 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   EventSummary? _selectedSession;
   EventSummary? _activeSession;
   PlayerEventStatusSummary? _activeStatus;
+  PlayerScoreSubmissionSummary? _localScoreSubmission;
   int _selectedIndex = 0;
   _PlayPage _playPage = _PlayPage.status;
+
+  PlayMatchSummary get _figmaMatch => const PlayMatchSummary(
+    id: _figmaDemoMatchId,
+    matchNumber: 4,
+    status: 'assigned',
+    participants: [
+      MatchParticipantSummary(
+        userId: 'figma-player-you',
+        teamNumber: 1,
+        slotNumber: 1,
+        displayName: 'You',
+      ),
+      MatchParticipantSummary(
+        userId: 'figma-player-alex',
+        teamNumber: 1,
+        slotNumber: 2,
+        displayName: 'Alex',
+      ),
+      MatchParticipantSummary(
+        userId: 'figma-player-sarah',
+        teamNumber: 2,
+        slotNumber: 3,
+        displayName: 'Sarah',
+      ),
+      MatchParticipantSummary(
+        userId: 'figma-player-mike',
+        teamNumber: 2,
+        slotNumber: 4,
+        displayName: 'Mike',
+      ),
+    ],
+  );
+
+  PlayMatchSummary? get _displayMatch {
+    if (_activeStatus?.match != null) {
+      return _activeStatus!.match;
+    }
+    if (_activeSession != null) {
+      return _figmaMatch;
+    }
+    return null;
+  }
+
+  PlayerScoreSubmissionSummary? get _displayScoreSubmission {
+    return _isFigmaDemoMatch(_displayMatch)
+        ? _localScoreSubmission
+        : _activeStatus?.scoreSubmission;
+  }
+
+  bool _isFigmaDemoMatch(PlayMatchSummary? match) {
+    return match?.id == _figmaDemoMatchId;
+  }
 
   @override
   void initState() {
@@ -107,6 +166,8 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                 selectedSession: _selectedSession,
                 activeSession: _activeSession,
                 activeStatus: _activeStatus,
+                displayMatch: _displayMatch,
+                scoreSubmission: _displayScoreSubmission,
                 playPage: _playPage,
                 courtsFuture: _courtsFuture,
                 joinLobby: _joinLobby,
@@ -114,6 +175,11 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                 onOpenCourts: _showDiscoverCourts,
                 onShowStatus: () => _showPlayPage(_PlayPage.status),
                 onShowSessions: () => _showPlayPage(_PlayPage.courtSessions),
+                onShowSessionDetails: () =>
+                    _showPlayPage(_PlayPage.sessionDetails),
+                onShowPayment: () => _showPlayPage(_PlayPage.payment),
+                onShowSchedule: () => _showPlayPage(_PlayPage.schedule),
+                onShowQueueLobby: () => _showPlayPage(_PlayPage.queueLobby),
                 onSelectSession: _selectSession,
                 onShowMySession: () => _showPlayPage(_PlayPage.mySession),
                 onShowUpcomingMatch: () =>
@@ -295,6 +361,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
           _selectedSession = event;
           _activeSession = event;
           _activeStatus = status;
+          _localScoreSubmission = null;
           _playPage = _PlayPage.mySession;
         });
       }
@@ -303,9 +370,23 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   }
 
   Future<void> _submitScore(int teamOneScore, int teamTwoScore) {
-    final match = _activeStatus?.match;
-    if (match == null || _selectedSession == null) {
+    final match = _displayMatch;
+    final event = _selectedSession ?? _activeSession;
+    if (match == null || event == null) {
       return _runRequest(() async => 'No assigned match yet', 'Submit score');
+    }
+    if (_isFigmaDemoMatch(match)) {
+      setState(() {
+        _localScoreSubmission = PlayerScoreSubmissionSummary(
+          id: 'figma-demo-score',
+          status: 'pending',
+          teamOneScore: teamOneScore,
+          teamTwoScore: teamTwoScore,
+        );
+        _playPage = _PlayPage.waitingVerification;
+        _selectedIndex = 0;
+      });
+      return Future.value();
     }
     return _runRequest(() async {
       await const EventService().submitScore(
@@ -313,9 +394,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
         teamOneScore: teamOneScore,
         teamTwoScore: teamTwoScore,
       );
-      final status = await const EventService().readStatus(
-        _selectedSession!.id,
-      );
+      final status = await const EventService().readStatus(event.id);
       if (mounted) {
         setState(() {
           _activeStatus = status;
@@ -329,6 +408,9 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   void _selectSession(EventSummary event) {
     setState(() {
       _selectedSession = event;
+      _activeSession = null;
+      _activeStatus = null;
+      _localScoreSubmission = null;
       _playPage = _PlayPage.sessionDetails;
       _selectedIndex = 0;
     });
@@ -348,21 +430,28 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
       _selectedSession = null;
       _activeSession = null;
       _activeStatus = null;
+      _localScoreSubmission = null;
       _playPage = _PlayPage.status;
       _selectedIndex = 0;
     });
   }
 
   Future<void> _goToCourt() {
-    final match = _activeStatus?.match;
-    if (match == null || _selectedSession == null) {
+    final match = _displayMatch;
+    final event = _selectedSession ?? _activeSession;
+    if (match == null || event == null) {
       return _runRequest(() async => 'No assigned match yet', 'Start match');
+    }
+    if (_isFigmaDemoMatch(match)) {
+      setState(() {
+        _playPage = _PlayPage.activeMatch;
+        _selectedIndex = 0;
+      });
+      return Future.value();
     }
     return _runRequest(() async {
       await const EventService().startMatch(match.id);
-      final status = await const EventService().readStatus(
-        _selectedSession!.id,
-      );
+      final status = await const EventService().readStatus(event.id);
       if (mounted) {
         setState(() {
           _activeStatus = status;
@@ -374,13 +463,31 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   }
 
   Future<void> _refreshActiveStatus() {
-    if (_selectedSession == null) {
+    if (_isFigmaDemoMatch(_displayMatch) && _localScoreSubmission != null) {
+      setState(() {
+        if (_localScoreSubmission!.status == 'pending') {
+          _localScoreSubmission = PlayerScoreSubmissionSummary(
+            id: _localScoreSubmission!.id,
+            status: 'verified',
+            teamOneScore: _localScoreSubmission!.teamOneScore,
+            teamTwoScore: _localScoreSubmission!.teamTwoScore,
+          );
+          _playPage = _PlayPage.waitingVerification;
+        } else {
+          _localScoreSubmission = null;
+          _playPage = _PlayPage.mySession;
+        }
+        _selectedIndex = 0;
+      });
+      return Future.value();
+    }
+
+    final event = _selectedSession ?? _activeSession;
+    if (event == null) {
       return _runRequest(() async => 'No active session', 'Refresh status');
     }
     return _runRequest(() async {
-      final status = await const EventService().readStatus(
-        _selectedSession!.id,
-      );
+      final status = await const EventService().readStatus(event.id);
       if (mounted) {
         setState(() {
           _activeStatus = status;
@@ -399,6 +506,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
       setState(() {
         _activeSession = null;
         _activeStatus = null;
+        _localScoreSubmission = null;
         _playPage = _selectedCourt == null
             ? _PlayPage.status
             : _PlayPage.courtSessions;
@@ -414,6 +522,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
         setState(() {
           _activeSession = null;
           _activeStatus = status;
+          _localScoreSubmission = null;
           _selectedSession = null;
           _playPage = _selectedCourt == null
               ? _PlayPage.status
@@ -438,6 +547,7 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
           _selectedSession = null;
           _activeSession = null;
           _activeStatus = null;
+          _localScoreSubmission = null;
           _playPage = _PlayPage.courtSessions;
           _selectedIndex = 0;
         });
@@ -469,6 +579,8 @@ class _DiscoverOrFlowTab extends StatelessWidget {
     required this.selectedSession,
     required this.activeSession,
     required this.activeStatus,
+    required this.displayMatch,
+    required this.scoreSubmission,
     required this.playPage,
     required this.courtsFuture,
     required this.joinLobby,
@@ -476,6 +588,10 @@ class _DiscoverOrFlowTab extends StatelessWidget {
     required this.onOpenCourts,
     required this.onShowStatus,
     required this.onShowSessions,
+    required this.onShowSessionDetails,
+    required this.onShowPayment,
+    required this.onShowSchedule,
+    required this.onShowQueueLobby,
     required this.onSelectSession,
     required this.onShowMySession,
     required this.onShowUpcomingMatch,
@@ -493,6 +609,8 @@ class _DiscoverOrFlowTab extends StatelessWidget {
   final EventSummary? selectedSession;
   final EventSummary? activeSession;
   final PlayerEventStatusSummary? activeStatus;
+  final PlayMatchSummary? displayMatch;
+  final PlayerScoreSubmissionSummary? scoreSubmission;
   final _PlayPage playPage;
   final Future<List<CourtSummary>> courtsFuture;
   final Future<void> Function(EventSummary) joinLobby;
@@ -500,6 +618,10 @@ class _DiscoverOrFlowTab extends StatelessWidget {
   final VoidCallback onOpenCourts;
   final VoidCallback onShowStatus;
   final VoidCallback onShowSessions;
+  final VoidCallback onShowSessionDetails;
+  final VoidCallback onShowPayment;
+  final VoidCallback onShowSchedule;
+  final VoidCallback onShowQueueLobby;
   final void Function(EventSummary) onSelectSession;
   final VoidCallback onShowMySession;
   final VoidCallback onShowUpcomingMatch;
@@ -533,12 +655,18 @@ class _DiscoverOrFlowTab extends StatelessWidget {
       selectedSession: selectedSession,
       activeSession: activeSession,
       activeStatus: activeStatus,
+      displayMatch: displayMatch,
+      scoreSubmission: scoreSubmission,
       playPage: playPage,
       joinLobby: joinLobby,
       onSubmitScore: onSubmitScore,
       onOpenCourts: onOpenCourts,
       onShowStatus: onShowStatus,
       onShowSessions: onShowSessions,
+      onShowSessionDetails: onShowSessionDetails,
+      onShowPayment: onShowPayment,
+      onShowSchedule: onShowSchedule,
+      onShowQueueLobby: onShowQueueLobby,
       onSelectSession: onSelectSession,
       onShowMySession: onShowMySession,
       onShowUpcomingMatch: onShowUpcomingMatch,
@@ -1439,14 +1567,24 @@ class _SessionDetailsCard extends StatelessWidget {
     required this.court,
     required this.event,
     required this.onJoinLobby,
+    required this.actionLabel,
+    required this.actionIcon,
+    required this.showQueueLobby,
   });
 
   final CourtSummary court;
   final EventSummary event;
   final VoidCallback onJoinLobby;
+  final String actionLabel;
+  final IconData actionIcon;
+  final bool showQueueLobby;
 
   @override
   Widget build(BuildContext context) {
+    final sessionInfoText = showQueueLobby
+        ? 'Check in now to enter the live queue. The next four queued players are assigned into a doubles match.'
+        : 'Complete payment first, then check in from your schedule when you arrive at the court.';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1493,7 +1631,7 @@ class _SessionDetailsCard extends StatelessWidget {
                 ),
                 const _SessionMetaRow(
                   icon: Icons.how_to_reg_rounded,
-                  text: 'Check in to enter the live queue',
+                  text: 'Open Competitive Play',
                 ),
                 _SessionMetaRow(
                   icon: Icons.sports_tennis_rounded,
@@ -1514,10 +1652,10 @@ class _SessionDetailsCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: _line),
                   ),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Session info',
                         style: TextStyle(
                           color: _ink,
@@ -1525,10 +1663,10 @@ class _SessionDetailsCard extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
-                        'Check in when you are ready to enter the live queue. Four queued players create the next doubles match.',
-                        style: TextStyle(
+                        sessionInfoText,
+                        style: const TextStyle(
                           color: _muted,
                           fontSize: 12.5,
                           height: 1.35,
@@ -1537,13 +1675,41 @@ class _SessionDetailsCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (showQueueLobby) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: _freshGreen,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.groups_rounded, color: _courtGreen),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Your status: 3rd in Queue\nPlayer Lobby: 4/8 filled',
+                            style: TextStyle(
+                              color: _courtGreen,
+                              fontSize: 14,
+                              height: 1.35,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
                     onPressed: onJoinLobby,
-                    icon: const Icon(Icons.login_rounded, size: 18),
-                    label: const Text('Check In Now'),
+                    icon: Icon(actionIcon, size: 18),
+                    label: Text(actionLabel),
                     style: _primaryButtonStyle(),
                   ),
                 ),

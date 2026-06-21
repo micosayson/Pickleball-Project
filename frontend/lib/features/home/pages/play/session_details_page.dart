@@ -6,12 +6,18 @@ class _SessionDetailsPage extends StatelessWidget {
     required this.event,
     required this.onBack,
     required this.onJoinLobby,
+    required this.actionLabel,
+    required this.actionIcon,
+    this.showQueueLobby = false,
   });
 
   final CourtSummary court;
   final EventSummary event;
   final VoidCallback onBack;
   final VoidCallback onJoinLobby;
+  final String actionLabel;
+  final IconData actionIcon;
+  final bool showQueueLobby;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +34,9 @@ class _SessionDetailsPage extends StatelessWidget {
           court: court,
           event: event,
           onJoinLobby: onJoinLobby,
+          actionLabel: actionLabel,
+          actionIcon: actionIcon,
+          showQueueLobby: showQueueLobby,
         ),
       ],
     );

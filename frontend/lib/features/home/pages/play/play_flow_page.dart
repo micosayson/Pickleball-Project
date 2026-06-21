@@ -8,12 +8,18 @@ class _PlayFlowPage extends StatelessWidget {
     required this.selectedSession,
     required this.activeSession,
     required this.activeStatus,
+    required this.displayMatch,
+    required this.scoreSubmission,
     required this.playPage,
     required this.joinLobby,
     required this.onSubmitScore,
     required this.onOpenCourts,
     required this.onShowStatus,
     required this.onShowSessions,
+    required this.onShowSessionDetails,
+    required this.onShowPayment,
+    required this.onShowSchedule,
+    required this.onShowQueueLobby,
     required this.onSelectSession,
     required this.onShowMySession,
     required this.onShowUpcomingMatch,
@@ -29,12 +35,18 @@ class _PlayFlowPage extends StatelessWidget {
   final EventSummary? selectedSession;
   final EventSummary? activeSession;
   final PlayerEventStatusSummary? activeStatus;
+  final PlayMatchSummary? displayMatch;
+  final PlayerScoreSubmissionSummary? scoreSubmission;
   final _PlayPage playPage;
   final Future<void> Function(EventSummary) joinLobby;
   final Future<void> Function(int teamOneScore, int teamTwoScore) onSubmitScore;
   final VoidCallback onOpenCourts;
   final VoidCallback onShowStatus;
   final VoidCallback onShowSessions;
+  final VoidCallback onShowSessionDetails;
+  final VoidCallback onShowPayment;
+  final VoidCallback onShowSchedule;
+  final VoidCallback onShowQueueLobby;
   final void Function(EventSummary) onSelectSession;
   final VoidCallback onShowMySession;
   final VoidCallback onShowUpcomingMatch;
@@ -45,7 +57,7 @@ class _PlayFlowPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final match = activeStatus?.match;
+    final match = displayMatch ?? activeStatus?.match;
     final isWaitingVerification =
         activeStatus?.isWaitingVerification == true ||
         playPage == _PlayPage.waitingVerification;
@@ -69,7 +81,44 @@ class _PlayFlowPage extends StatelessWidget {
         court: selectedCourt!,
         event: selectedSession!,
         onBack: onShowSessions,
+        onJoinLobby: onShowPayment,
+        actionLabel: 'Pay PHP 500 Now',
+        actionIcon: Icons.payments_rounded,
+      );
+    }
+
+    if (playPage == _PlayPage.payment &&
+        selectedCourt != null &&
+        selectedSession != null) {
+      return _PaymentStepPage(
+        court: selectedCourt!,
+        event: selectedSession!,
+        onBack: onShowSessionDetails,
+        onConfirmPayment: onShowSchedule,
+      );
+    }
+
+    if (playPage == _PlayPage.schedule &&
+        selectedCourt != null &&
+        selectedSession != null) {
+      return _SchedulePage(
+        court: selectedCourt!,
+        event: selectedSession!,
+        onCheckIn: onShowQueueLobby,
+      );
+    }
+
+    if (playPage == _PlayPage.queueLobby &&
+        selectedCourt != null &&
+        selectedSession != null) {
+      return _SessionDetailsPage(
+        court: selectedCourt!,
+        event: selectedSession!,
+        onBack: onShowSchedule,
         onJoinLobby: () => joinLobby(selectedSession!),
+        actionLabel: 'Check In Now',
+        actionIcon: Icons.login_rounded,
+        showQueueLobby: true,
       );
     }
 
@@ -124,7 +173,7 @@ class _PlayFlowPage extends StatelessWidget {
       return _WaitingVerificationPage(
         court: selectedCourt!,
         match: match,
-        scoreSubmission: activeStatus?.scoreSubmission,
+        scoreSubmission: scoreSubmission ?? activeStatus?.scoreSubmission,
         onRefreshStatus: onRefreshStatus,
       );
     }

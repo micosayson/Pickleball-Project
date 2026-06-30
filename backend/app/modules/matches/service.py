@@ -9,6 +9,8 @@ from app.modules.match_participants.models import MatchParticipant
 from app.modules.matches.models import Match
 from app.modules.matches.repository import MatchRepository
 from app.modules.matches.schemas import MatchCreate, MatchUpdate
+from app.modules.notifications.repository import NotificationRepository
+from app.modules.notifications.service import NotificationService
 
 
 class MatchService:
@@ -88,6 +90,13 @@ class MatchService:
             self.repository.db.add(match)
             self.repository.db.commit()
             self.repository.db.refresh(match)
+            self._notify_participants(
+                match,
+                title=f"Match #{match.match_number} is live",
+                body="Your match has started. Head to the court and get ready to play.",
+                actor_user_id=user_id,
+                category="match",
+            )
         return match
 
     def _backend_user_id(self, scope: TenantContext) -> UUID:
@@ -97,3 +106,35 @@ class MatchService:
                 detail="Authenticated user profile is required",
             )
         return UUID(scope.backend_user_id)
+
+    def _notify_participants(
+        self,
+        match: Match,
+        *,
+        title: str,
+        body: str,
+        actor_user_id: UUID | None,
+        category: str,
+    ) -> None:
+        participant_ids = [
+            participant.user_id
+            for participant in self.repository.db.query(MatchParticipant)
+            .filter(MatchParticipant.match_id == match.id, MatchParticipant.status == "active")
+            .all()
+        ]
+        if not participant_ids:
+            return
+        NotificationService(NotificationRepository(self.repository.db)).notify_match_participants(
+            participant_user_ids=participant_ids,
+            title=title,
+            body=body,
+            actor_user_id=actor_user_id,
+            related_entity_id=match.id,
+            action_url=f"/player/matches/{match.id}",
+            category=category,
+            metadata_json={
+                "match_number": match.match_number,
+                "court_id": str(match.court_id),
+                "event_id": str(match.event_id),
+            },
+        )

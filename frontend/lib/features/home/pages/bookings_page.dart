@@ -17,6 +17,7 @@ class BookingsPage extends StatelessWidget {
       description:
           'The Figma booking and timeslot screens are represented here without creating in-memory reservations.',
       icon: Icons.calendar_month_rounded,
+      selectedTabIndex: 1,
       children: [
         FutureBuilder(
           future: ApiClient.instance.get(ApiEndpoints.bookings),

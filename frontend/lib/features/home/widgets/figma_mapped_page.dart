@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../core/navigation/app_routes.dart';
 import '../../../core/styles/design_tokens.dart';
 
 class FigmaMappedPage extends StatelessWidget {
@@ -12,6 +13,8 @@ class FigmaMappedPage extends StatelessWidget {
     required this.icon,
     required this.children,
     this.trailing,
+    this.selectedTabIndex,
+    this.showBottomNav = false,
   });
 
   final String title;
@@ -20,20 +23,16 @@ class FigmaMappedPage extends StatelessWidget {
   final IconData icon;
   final List<Widget> children;
   final Widget? trailing;
+  final int? selectedTabIndex;
+  final bool showBottomNav;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DesignColors.chalk,
-      appBar: AppBar(
-        backgroundColor: DesignColors.chalk,
-        foregroundColor: DesignColors.ink,
-        surfaceTintColor: Colors.transparent,
-        title: Text(title),
-        actions: trailing == null
-            ? null
-            : [trailing!, const SizedBox(width: 8)],
-      ),
+      bottomNavigationBar: showBottomNav && selectedTabIndex != null
+          ? _FigmaBottomNav(selectedIndex: selectedTabIndex!)
+          : null,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -41,9 +40,9 @@ class FigmaMappedPage extends StatelessWidget {
             return ListView(
               padding: EdgeInsets.fromLTRB(
                 isWide ? 40 : 18,
-                10,
+                12,
                 isWide ? 40 : 18,
-                28,
+                showBottomNav ? 96 : 28,
               ),
               children: [
                 Center(
@@ -52,6 +51,8 @@ class FigmaMappedPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        const _MobileTopBar(),
+                        const SizedBox(height: 18),
                         _MappedHero(
                           eyebrow: eyebrow,
                           title: title,
@@ -67,6 +68,123 @@ class FigmaMappedPage extends StatelessWidget {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileTopBar extends StatelessWidget {
+  const _MobileTopBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8ECD4),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: DesignColors.line),
+            ),
+            child: const Icon(
+              Icons.person_rounded,
+              size: 20,
+              color: DesignColors.ink,
+            ),
+          ),
+          const Expanded(
+            child: Text(
+              'RallyHub',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: DesignColors.courtGreen,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: IconButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed(AppRoutes.notifications);
+              },
+              icon: const Icon(Icons.notifications_none_rounded),
+              color: DesignColors.ink,
+              tooltip: 'Notifications',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FigmaBottomNav extends StatelessWidget {
+  const _FigmaBottomNav({required this.selectedIndex});
+
+  final int selectedIndex;
+
+  static const _routes = [
+    AppRoutes.play,
+    AppRoutes.courts,
+    AppRoutes.matches,
+    AppRoutes.sessions,
+    AppRoutes.profileHistory,
+  ];
+
+  static const _icons = [
+    Icons.sports_tennis_rounded,
+    Icons.location_on_rounded,
+    Icons.sports_score_rounded,
+    Icons.calendar_month_rounded,
+    Icons.person_rounded,
+  ];
+
+  static const _labels = ['Play', 'Courts', 'Matches', 'Sessions', 'Profile'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      heightFactor: 1,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 390),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: Color(0xFFFFFFF4),
+            border: Border(top: BorderSide(color: DesignColors.line)),
+          ),
+          child: SafeArea(
+            minimum: const EdgeInsets.fromLTRB(2, 0, 2, 0),
+            child: NavigationBar(
+              height: 56,
+              elevation: 0,
+              backgroundColor: const Color(0xFFFFFFF4),
+              indicatorColor: DesignColors.freshGreen,
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.alwaysShow,
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (index) {
+                if (index == selectedIndex) return;
+                Navigator.of(context).pushReplacementNamed(_routes[index]);
+              },
+              destinations: List.generate(
+                5,
+                (index) => NavigationDestination(
+                  icon: Icon(_icons[index], size: 18),
+                  selectedIcon: Icon(_icons[index], size: 18),
+                  label: _labels[index],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

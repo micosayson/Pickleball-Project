@@ -8,6 +8,7 @@ from app.modules.events.models import Event
 from app.modules.invitations.models import Invitation
 from app.modules.match_participants.models import MatchParticipant
 from app.modules.matches.models import Match
+from app.modules.notifications.models import Notification
 from app.modules.rating_history.models import RatingHistory
 from app.modules.player_ratings.models import PlayerRating
 from app.modules.rankings.models import Ranking
@@ -26,6 +27,7 @@ __all__ = [
     "EventRegistration",
     "Match",
     "MatchParticipant",
+    "Notification",
     "ScoreSubmission",
     "PlayerRating",
     "RatingHistory",

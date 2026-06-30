@@ -16,6 +16,8 @@ class DashboardPage extends StatelessWidget {
       description:
           'Track the live player loop from court discovery through queue, match assignment, and verified results.',
       icon: Icons.dashboard_customize_rounded,
+      selectedTabIndex: 3,
+      showBottomNav: true,
       children: const [DashboardContent()],
     );
   }

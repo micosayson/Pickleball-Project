@@ -16,6 +16,8 @@ class MatchesListPage extends StatelessWidget {
       description:
           'Review assigned, active, and verified matches from the live queue flow.',
       icon: Icons.sports_score_rounded,
+      selectedTabIndex: 2,
+      showBottomNav: true,
       children: const [MatchesListContent()],
     );
   }

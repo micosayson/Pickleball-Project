@@ -6,13 +6,11 @@ import 'features/auth/pages/login_page.dart';
 import 'features/auth/pages/onboarding_page.dart';
 import 'features/auth/pages/register_page.dart';
 import 'features/auth/widgets/auth_gate.dart';
-import 'features/home/pages/bookings_page.dart';
 import 'features/home/pages/dashboard_page.dart';
-import 'features/home/pages/home_placeholder_page.dart';
-import 'features/home/pages/matches_list_page.dart';
+import 'features/home/pages/home_route_pages.dart';
 import 'features/home/pages/notifications_page.dart';
 import 'features/home/pages/payment_flow_page.dart';
-import 'features/home/pages/profile_history_page.dart';
+import 'features/home/pages/bookings_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,15 +91,15 @@ class MyApp extends StatelessWidget {
         AppRoutes.onboarding: (_) => const OnboardingPage(),
         AppRoutes.login: (_) => const LoginPage(),
         AppRoutes.register: (_) => const RegisterPage(),
-        AppRoutes.home: (_) => const HomePlaceholderPage(),
-        AppRoutes.play: (_) => const HomePlaceholderPage(),
-        AppRoutes.courts: (_) => const HomePlaceholderPage(),
-        AppRoutes.sessions: (_) => const HomePlaceholderPage(),
+        AppRoutes.home: (_) => const HomeRoutePage(),
+        AppRoutes.play: (_) => const PlayRoutePage(),
+        AppRoutes.courts: (_) => const CourtsRoutePage(),
+        AppRoutes.sessions: (_) => const SessionsRoutePage(),
         AppRoutes.dashboard: (_) => const DashboardPage(),
-        AppRoutes.discoverCourts: (_) => const HomePlaceholderPage(),
-        AppRoutes.matches: (_) => const MatchesListPage(),
+        AppRoutes.discoverCourts: (_) => const DiscoverCourtsRoutePage(),
+        AppRoutes.matches: (_) => const MatchesRoutePage(),
         AppRoutes.notifications: (_) => const NotificationsPage(),
-        AppRoutes.profileHistory: (_) => const ProfileHistoryPage(),
+        AppRoutes.profileHistory: (_) => const ProfileRoutePage(),
         AppRoutes.bookings: (_) => const BookingsPage(),
         AppRoutes.payment: (_) => const PaymentFlowPage(),
       },

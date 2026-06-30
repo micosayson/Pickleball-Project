@@ -15,10 +15,12 @@ from app.modules.events.models import Event
 from app.modules.invitations.models import Invitation
 from app.modules.match_participants.models import MatchParticipant
 from app.modules.matches.models import Match
+from app.modules.notifications.models import Notification
 from app.modules.player_ratings.models import PlayerRating
 from app.modules.rating_history.models import RatingHistory
 from app.modules.rankings.models import Ranking
 from app.modules.score_submissions.models import ScoreSubmission
+from app.modules.tenants.models import Tenant
 from app.modules.users.models import User
 
 DEMO_NAMESPACE = uuid.UUID("6cce2218-5e04-4cda-9b6c-a2d30b0f4f1a")
@@ -347,6 +349,81 @@ def seed_demo_data(session: Session) -> None:
                 "scope_label": "global",
                 "snapshot_at": event_start.replace(hour=19, minute=6),
                 "player_rating_id": ratings[player.id].id,
+            },
+        )
+
+    notification_rows = [
+        (
+            "notification:mico:match-verified",
+            mico,
+            staff_1,
+            "match_alert",
+            "match",
+            "Match verified",
+            "Your latest match was verified and your ranking was updated.",
+            "/player/matches/%s" % match.id,
+            "match",
+            match.id,
+            {"match_number": match.match_number, "winner_team_number": 1},
+        ),
+        (
+            "notification:mico:friend-request",
+            mico,
+            player_a,
+            "friend_request",
+            "social",
+            "New friend request",
+            "Player A sent you a friend request.",
+            "/player/social/friends",
+            None,
+            None,
+            {"requester_name": "Player A"},
+        ),
+        (
+            "notification:mico:message",
+            mico,
+            player_b,
+            "message",
+            "message",
+            "Message from Player B",
+            "Hey Mico, can we play again this weekend?",
+            "/player/messages",
+            None,
+            None,
+            {"sender_name": "Player B", "preview": "Hey Mico, can we play again this weekend?"},
+        ),
+        (
+            "notification:player-a:rating-update",
+            player_a,
+            None,
+            "rating_update",
+            "rating",
+            "Your rating changed",
+            "Your rating moved up by 0.03 to 3.55.",
+            "/player/profile/history",
+            "rating_history",
+            None,
+            {"old_rating": 3.52, "new_rating": 3.55, "delta": 0.03},
+        ),
+    ]
+
+    for key, recipient, actor, notification_type, category, title, body, action_url, entity_type, entity_id, metadata in notification_rows:
+        get_or_create(
+            session,
+            Notification,
+            {"id": stable_uuid(key)},
+            {
+                "recipient_user_id": recipient.id,
+                "actor_user_id": None if actor is None else actor.id,
+                "notification_type": notification_type,
+                "category": category,
+                "title": title,
+                "body": body,
+                "action_url": action_url,
+                "related_entity_type": entity_type,
+                "related_entity_id": entity_id,
+                "metadata_json": metadata,
+                "read_at": None,
             },
         )
 

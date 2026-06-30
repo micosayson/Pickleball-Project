@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../pages/login_page.dart';
 import '../pages/register_page.dart';
 import '../services/auth_service.dart';
-import '../../home/pages/home_placeholder_page.dart';
+import '../../home/pages/home_route_pages.dart';
 import '../../../core/styles/design_tokens.dart';
 
 bool _looksLikeEmail(String value) {
@@ -127,7 +127,7 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
       if (!mounted) return;
       debugPrint('Login completed. session=${response.session != null}');
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomePlaceholderPage()),
+        MaterialPageRoute(builder: (_) => const PlayRoutePage()),
         (route) => false,
       );
     } on AuthException catch (e) {
@@ -352,13 +352,25 @@ class _AuthLoginFormState extends State<AuthLoginForm> {
                         color: DesignColors.ink,
                       ),
                     )
-                  : const Text(
-                      'Continue  ->',
-                      style: TextStyle(
-                        fontSize: 14.0,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0,
-                      ),
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Sign In',
+                          style: TextStyle(
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 18,
+                          color: DesignColors.ink,
+                        ),
+                      ],
                     ),
             ),
           ),
@@ -425,7 +437,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
       debugPrint('Signup completed. session=${response.session != null}');
       if (response.session != null) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomePlaceholderPage()),
+          MaterialPageRoute(builder: (_) => const PlayRoutePage()),
           (route) => false,
         );
       } else {
@@ -490,11 +502,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             'Full Name',
             style: TextStyle(
               color: DesignColors.courtGreen,
-              fontSize: 14.0,
+              fontSize: 12.0,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 7.0),
           TextFormField(
             controller: _nameController,
             autofillHints: const [AutofillHints.name],
@@ -502,11 +514,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
               hintText: 'John Doe',
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
+              hintStyle: const TextStyle(color: Colors.grey, fontSize: 12.5),
               prefixIcon: const Icon(
                 Icons.person_outline,
                 color: DesignColors.muted,
-                size: 20.0,
+                size: 18.0,
               ),
               filled: true,
               fillColor: const Color(0xFFFFFFF4),
@@ -514,7 +526,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -523,18 +535,18 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               return null;
             },
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 14.0),
 
           // Email Field
           const Text(
             'Email',
             style: TextStyle(
               color: DesignColors.courtGreen,
-              fontSize: 14.0,
+              fontSize: 12.0,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 7.0),
           TextFormField(
             controller: _emailController,
             autofillHints: const [AutofillHints.email],
@@ -542,11 +554,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
               hintText: 'name@example.com',
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
+              hintStyle: const TextStyle(color: Colors.grey, fontSize: 12.5),
               prefixIcon: const Icon(
                 Icons.email_outlined,
                 color: DesignColors.muted,
-                size: 20.0,
+                size: 18.0,
               ),
               filled: true,
               fillColor: const Color(0xFFFFFFF4),
@@ -554,7 +566,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -566,18 +578,18 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               return null;
             },
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 14.0),
 
           // Password Field
           const Text(
             'Password',
             style: TextStyle(
               color: DesignColors.courtGreen,
-              fontSize: 14.0,
+              fontSize: 12.0,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 7.0),
           TextFormField(
             controller: _passwordController,
             autofillHints: const [AutofillHints.newPassword],
@@ -585,11 +597,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
               hintText: 'Enter password',
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
+              hintStyle: const TextStyle(color: Colors.grey, fontSize: 12.5),
               prefixIcon: const Icon(
                 Icons.lock_outlined,
                 color: DesignColors.muted,
-                size: 20.0,
+                size: 18.0,
               ),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -597,7 +609,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
                   color: DesignColors.muted,
-                  size: 20.0,
+                  size: 18.0,
                 ),
                 onPressed: () {
                   setState(() {
@@ -611,7 +623,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -623,18 +635,18 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               return null;
             },
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 14.0),
 
           // Confirm Password Field
           const Text(
             'Confirm Password',
             style: TextStyle(
               color: DesignColors.courtGreen,
-              fontSize: 14.0,
+              fontSize: 12.0,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 7.0),
           TextFormField(
             controller: _confirmPasswordController,
             autofillHints: const [AutofillHints.newPassword],
@@ -643,11 +655,11 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
             onFieldSubmitted: (_) => _submit(),
             decoration: InputDecoration(
               hintText: 'Confirm password',
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
+              hintStyle: const TextStyle(color: Colors.grey, fontSize: 12.5),
               prefixIcon: const Icon(
                 Icons.lock_outlined,
                 color: DesignColors.muted,
-                size: 20.0,
+                size: 18.0,
               ),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -655,7 +667,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
                   color: DesignColors.muted,
-                  size: 20.0,
+                  size: 18.0,
                 ),
                 onPressed: () {
                   setState(() {
@@ -669,7 +681,7 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                 borderRadius: BorderRadius.circular(8.0),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12.0),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -681,18 +693,18 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
               return null;
             },
           ),
-          const SizedBox(height: 22.0),
+          const SizedBox(height: 14.0),
 
           // Register Button
           SizedBox(
-            height: 56.0,
+            height: 48.0,
             child: ElevatedButton(
               onPressed: canSubmit ? _submit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: DesignColors.freshGreen,
                 foregroundColor: DesignColors.ink,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+                  borderRadius: BorderRadius.circular(999.0),
                 ),
                 elevation: 0,
                 shadowColor: Colors.transparent,
@@ -706,13 +718,25 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
                         color: DesignColors.ink,
                       ),
                     )
-                  : const Text(
-                      'Create account',
-                      style: TextStyle(
-                        fontSize: 16.0,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0,
-                      ),
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Create account',
+                          style: TextStyle(
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 18,
+                          color: DesignColors.ink,
+                        ),
+                      ],
                     ),
             ),
           ),
@@ -738,42 +762,6 @@ class _AuthRegisterFormState extends State<AuthRegisterForm> {
       return 'Too many signup attempts right now. Please wait a bit and try again.';
     }
     return message;
-  }
-}
-
-class SocialLogins extends StatelessWidget {
-  const SocialLogins({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFF4),
-        borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: DesignColors.muted.withValues(alpha: 0.2)),
-      ),
-      child: const Row(
-        children: [
-          Icon(
-            Icons.lock_outline_rounded,
-            color: DesignColors.courtGreen,
-            size: 20.0,
-          ),
-          SizedBox(width: 10.0),
-          Expanded(
-            child: Text(
-              'Secure email sign-in with Supabase Auth',
-              style: TextStyle(
-                color: DesignColors.courtGreen,
-                fontSize: 13.0,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -803,7 +791,7 @@ class AuthRegisterFooter extends StatelessWidget {
             );
           },
           child: const Text(
-            'Create account',
+            'Create Account',
             style: TextStyle(
               color: DesignColors.courtGreen,
               fontWeight: FontWeight.w700,

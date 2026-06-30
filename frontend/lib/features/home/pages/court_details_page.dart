@@ -24,6 +24,8 @@ class CourtDetailsPage extends StatelessWidget {
       description:
           'Inspect the selected court before joining a live session or checking booking availability.',
       icon: Icons.stadium_rounded,
+      selectedTabIndex: 1,
+      showBottomNav: true,
       children: [
         FutureBuilder(
           future: ApiClient.instance.get(ApiEndpoints.court(courtId)),

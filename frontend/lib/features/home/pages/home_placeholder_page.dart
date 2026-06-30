@@ -54,7 +54,12 @@ enum _PlayPage {
 }
 
 class HomePlaceholderPage extends StatefulWidget {
-  const HomePlaceholderPage({super.key});
+  const HomePlaceholderPage({
+    super.key,
+    this.initialIndex = 0,
+  });
+
+  final int initialIndex;
 
   @override
   State<HomePlaceholderPage> createState() => _HomePlaceholderPageState();
@@ -126,7 +131,24 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = _normalizedTabIndex(widget.initialIndex);
     _courtsFuture = const CourtService().listCourts(limit: 12);
+  }
+
+  static int _normalizedTabIndex(int value) {
+    if (value < 0) return 0;
+    if (value > 4) return 4;
+    return value;
+  }
+
+  static String _routeForTabIndex(int index) {
+    return switch (index) {
+      0 => AppRoutes.play,
+      1 => AppRoutes.courts,
+      2 => AppRoutes.matches,
+      3 => AppRoutes.sessions,
+      _ => AppRoutes.profileHistory,
+    };
   }
 
   Future<void> _runRequest(
@@ -341,7 +363,11 @@ class _HomePlaceholderPageState extends State<HomePlaceholderPage> {
                           NavigationDestinationLabelBehavior.alwaysShow,
                       selectedIndex: _selectedIndex,
                       onDestinationSelected: (index) {
-                        setState(() => _selectedIndex = index);
+                        final nextRoute = _routeForTabIndex(index);
+                        if (index == _selectedIndex) {
+                          return;
+                        }
+                        Navigator.of(context).pushReplacementNamed(nextRoute);
                       },
                       destinations: const [
                         NavigationDestination(

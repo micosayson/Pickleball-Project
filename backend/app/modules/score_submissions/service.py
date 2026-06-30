@@ -9,6 +9,8 @@ from app.modules.event_queue.models import EventQueueEntry
 from app.modules.event_queue.repository import EventQueueRepository
 from app.modules.match_participants.models import MatchParticipant
 from app.modules.matches.models import Match
+from app.modules.notifications.repository import NotificationRepository
+from app.modules.notifications.service import NotificationService
 from app.modules.score_submissions.models import ScoreSubmission
 from app.modules.score_submissions.repository import ScoreSubmissionRepository
 from app.modules.score_submissions.schemas import ScoreSubmissionCreate, ScoreSubmissionReject
@@ -136,6 +138,12 @@ class ScoreSubmissionService:
         match.status = "verified"
         match.winner_team_number = winner_team_number
         self._return_players_to_queue(match, verifier_id=verifier_id, returned_at=now)
+        self._notify_match_verified(
+            match,
+            score_submission=score_submission,
+            verifier_id=verifier_id,
+            winner_team_number=winner_team_number,
+        )
         add_audit_log(
             self.repository.db,
             action="score.verify",
@@ -254,3 +262,37 @@ class ScoreSubmissionService:
                 detail="Authenticated user profile is required",
             )
         return UUID(scope.backend_user_id)
+
+    def _notify_match_verified(
+        self,
+        match: Match,
+        *,
+        score_submission: ScoreSubmission,
+        verifier_id: UUID,
+        winner_team_number: int,
+    ) -> None:
+        participant_ids = [
+            participant.user_id
+            for participant in self.repository.db.query(MatchParticipant)
+            .filter(MatchParticipant.match_id == match.id, MatchParticipant.status == "active")
+            .all()
+        ]
+        if not participant_ids:
+            return
+        title = f"Match #{match.match_number} verified"
+        body = f"Final score {score_submission.team_one_score}-{score_submission.team_two_score}. Team {winner_team_number} won."
+        NotificationService(NotificationRepository(self.repository.db)).notify_match_participants(
+            participant_user_ids=participant_ids,
+            title=title,
+            body=body,
+            actor_user_id=verifier_id,
+            related_entity_id=match.id,
+            action_url=f"/player/matches/{match.id}",
+            category="match",
+            metadata_json={
+                "match_number": match.match_number,
+                "winner_team_number": winner_team_number,
+                "team_one_score": score_submission.team_one_score,
+                "team_two_score": score_submission.team_two_score,
+            },
+        )

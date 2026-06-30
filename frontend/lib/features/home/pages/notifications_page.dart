@@ -16,6 +16,7 @@ class NotificationsPage extends StatelessWidget {
       description:
           'A player inbox for match-ready alerts, score verification updates, and court announcements.',
       icon: Icons.notifications_active_rounded,
+      selectedTabIndex: 4,
       children: const [NotificationsContent()],
     );
   }

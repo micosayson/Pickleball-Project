@@ -4,6 +4,8 @@ from fastapi import HTTPException, status
 
 from app.core.tenancy import TenantContext
 from app.modules.player_ratings.models import PlayerRating
+from app.modules.notifications.repository import NotificationRepository
+from app.modules.notifications.service import NotificationService
 from app.modules.ratings.repository import RatingRepository
 from app.modules.ratings.schemas import RatingCreate, RatingUpdate
 
@@ -41,7 +43,20 @@ class RatingService:
 
     def update_rating(self, rating_id: UUID, payload: RatingUpdate, scope: TenantContext) -> PlayerRating:
         rating = self.get_rating(rating_id, scope)
-        return self.repository.update(rating, payload.model_dump(exclude_unset=True))
+        previous_value = rating.rating_value
+        values = payload.model_dump(exclude_unset=True)
+        updated = self.repository.update(rating, values)
+        if "rating_value" in values and values["rating_value"] != previous_value:
+            actor_user_id = UUID(scope.backend_user_id) if scope.backend_user_id else None
+            NotificationService(NotificationRepository(self.repository.db)).notify_rating_update(
+                recipient_user_id=updated.user_id,
+                old_rating=float(previous_value),
+                new_rating=float(updated.rating_value),
+                actor_user_id=actor_user_id,
+                related_entity_id=updated.id,
+                action_url=f"/player/profile/history",
+            )
+        return updated
 
     def delete_rating(self, rating_id: UUID, scope: TenantContext) -> None:
         rating = self.get_rating(rating_id, scope)
